@@ -23,7 +23,7 @@ jobs:
           python-version: 3.6
       - uses: Gr1N/setup-poetry@v7
       - name: Run tests
-        run: poetry run python manage.py test
+      - run: poetry run python manage.py test
 
   build:
     name: Build
@@ -35,5 +35,5 @@ jobs:
         with:
           python-version: 3.6
       - uses: Gr1N/setup-poetry@v7
-      - name: Run tests
+      - name: Run build
       - run: poetry --version
