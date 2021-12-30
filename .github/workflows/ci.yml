@@ -27,4 +27,5 @@ jobs:
         with:
           python-version: 3.6
       - uses: Gr1N/setup-poetry@v7
-      - run: poetry --version
+      - name: Run tests
+        run: python manage.py test
