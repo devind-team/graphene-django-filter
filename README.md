@@ -1,2 +1,2 @@
 # graphene-django-filter
-Advanced filters for Graphene
+Advanced filters for Graphene.
