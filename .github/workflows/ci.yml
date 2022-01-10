@@ -13,8 +13,8 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  test:
-    name: Test
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -24,6 +24,21 @@ jobs:
       - uses: Gr1N/setup-poetry@v7
       - name: Install dependencies
         run: poetry install
+      - name: Run linter
+        run: poetry run flake8
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - uses: Gr1N/setup-poetry@v7
+      - name: Install dependencies
+        run: poetry install --no-dev
       - name: Run tests
         run: poetry run python manage.py test
 
@@ -37,5 +52,7 @@ jobs:
         with:
           python-version: 3.6
       - uses: Gr1N/setup-poetry@v7
+      - name: Install dependencies
+        run: poetry install --no-dev
       - name: Run build
         run: poetry --version
