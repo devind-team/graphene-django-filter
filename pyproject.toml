@@ -5,7 +5,7 @@ description = "Advanced filters for Graphene"
 authors = ["squak <squakrazv@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<=3.6.8"
+python = ">=3.6.2,<=3.6.15"
 Django = "3.2"
 graphene = "2.1.9"
 graphene-django = "^2.15.0"
