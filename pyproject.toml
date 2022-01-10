@@ -6,10 +6,12 @@ authors = ["squak <squakrazv@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.6"
-graphene = "^3.0"
+Django = "3.2"
+graphene = "2.1.9"
+graphene-django = "^2.15.0"
+django-filter = "^21.1"
 
 [tool.poetry.dev-dependencies]
-Django = "3.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
