@@ -1,3 +1,5 @@
+"""Django settings for graphene-django-filter project."""
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
