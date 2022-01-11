@@ -2,7 +2,7 @@
 name = "graphene-django-filter"
 version = "0.1.0"
 description = "Advanced filters for Graphene"
-authors = ["squak <squakrazv@gmail.com>"]
+authors = ["devind-team <team@devind.ru>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/devind-team/graphene-django-filter"
@@ -39,3 +39,13 @@ flake8-annotations = "^2.7.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.semantic_release]
+version_variable = [
+    "graphene_django_filter/__init__.py:__version__",
+    "pyproject.toml:version"
+]
+branch = "main"
+upload_to_pypi = true
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
