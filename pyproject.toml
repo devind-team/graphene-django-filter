@@ -3,9 +3,20 @@ name = "graphene-django-filter"
 version = "0.1.0"
 description = "Advanced filters for Graphene"
 authors = ["squak <squakrazv@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/devind-team/graphene-django-filter"
+repository = "https://github.com/devind-team/graphene-django-filter"
+keywords = ["django", "graphene", "filter"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: Django"
+]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<=3.6.15"
+python = ">=3.6.2"
 Django = "3.2"
 graphene = "2.1.9"
 graphene-django = "^2.15.0"
