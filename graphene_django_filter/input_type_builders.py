@@ -1,6 +1,6 @@
 """Builders for creation input filter types."""
 
-from typing import Dict, Type, cast
+from typing import Dict, Optional, Type, cast
 
 import graphene
 from graphene.types.unmountedtype import UnmountedType
@@ -77,3 +77,55 @@ class LookupInputTypeBuilder:
                 self._attrs,
             ),
         )
+
+
+class FilterInputTypeBuilder:
+    """Builder for creation filter input type."""
+
+    def __init__(self, type_name: str) -> None:
+        self._type_name = type_name
+        self._lookup_input_types: Dict[str, Type[graphene.InputObjectType]] = {}
+        self._or: bool = False
+        self._and: bool = False
+
+    def add_lookup_input_type(
+        self,
+        field_name: str,
+        lookup_input_type: Type[graphene.InputObjectType],
+    ) -> 'FilterInputTypeBuilder':
+        """Add field and lookup input type."""
+        self._lookup_input_types[field_name] = lookup_input_type
+        return self
+
+    def set_or(self, _or: bool) -> 'FilterInputTypeBuilder':
+        """Set the flag which determines whether to add the field or."""
+        self._or = _or
+        return self
+
+    def set_and(self, _and: bool) -> 'FilterInputTypeBuilder':
+        """Set the flag which determines whether to add the field and."""
+        self._and = _and
+        return self
+
+    def build(self) -> Type[graphene.InputObjectType]:
+        """Build input type."""
+        name = f'{self._type_name}FilterInputType'
+        attrs = {k: graphene.Field(v) for k, v in self._lookup_input_types.items()}
+        input_type: Optional[Type[graphene.InputObjectType]] = None
+
+        def get_input_type() -> Optional[Type[graphene.InputObjectType]]:
+            return input_type
+
+        if self._or:
+            attrs['or'] = graphene.Field(get_input_type, description='Or field')
+        if self._and:
+            attrs['and'] = graphene.Field(get_input_type, description='And field')
+        input_type = cast(
+            Type[graphene.InputObjectType],
+            type(
+                name,
+                (graphene.InputObjectType,),
+                attrs,
+            ),
+        )
+        return input_type

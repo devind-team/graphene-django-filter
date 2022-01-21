@@ -2,7 +2,10 @@
 
 import graphene
 from django.test import TestCase
-from graphene_django_filter.input_type_builders import LookupInputTypeBuilder
+from graphene_django_filter.input_type_builders import (
+    FilterInputTypeBuilder,
+    LookupInputTypeBuilder,
+)
 
 
 class LookupInputTypeBuilderTest(TestCase):
@@ -76,3 +79,48 @@ class LookupInputTypeBuilderTest(TestCase):
                 'description': 'in lookup',
             },
         )
+
+
+class FilterInputTypeBuilderTest(TestCase):
+    """FilterInputTypeBuilder tests."""
+
+    def setUp(self) -> None:
+        """Set up FilterInputTypeBuilder tests."""
+        self.type_name = 'User'
+        self.field1_name = 'first_name'
+        self.field1 = LookupInputTypeBuilder(self.type_name, self.field1_name)\
+            .set_exact()\
+            .set_contains()\
+            .build()
+        self.field2_name = 'age'
+        self.field2 = LookupInputTypeBuilder(self.type_name, self.field2_name)\
+            .set_exact()\
+            .set_gt()\
+            .set_lt()\
+            .build()
+        self.builder = FilterInputTypeBuilder(self.type_name)
+
+    def test_base(self) -> None:
+        """Test FilterInputType creation without any boolean operation fields."""
+        input_type = self.builder.add_lookup_input_type(self.field1_name, self.field1)\
+            .add_lookup_input_type(self.field2_name, self.field2)\
+            .build()
+        self.assertEqual(input_type.__name__, f'{self.type_name}FilterInputType')
+        self.assertEqual(type(getattr(input_type, self.field1_name)), graphene.Field)
+        self.assertEqual(type(getattr(input_type, self.field2_name)), graphene.Field)
+
+    def test_or(self) -> None:
+        """Test FilterInputType creation with or field."""
+        input_type = self.builder.add_lookup_input_type(self.field1_name, self.field1)\
+            .set_or(True)\
+            .build()
+        self.assertEqual(type(getattr(input_type, 'or')), graphene.Field)
+        self.assertEqual(getattr(input_type, 'or').type, input_type)
+
+    def test_and(self) -> None:
+        """Test FilterInputType creation with and field."""
+        input_type = self.builder.add_lookup_input_type(self.field1_name, self.field1)\
+            .set_and(True)\
+            .build()
+        self.assertEqual(type(getattr(input_type, 'and')), graphene.Field)
+        self.assertEqual(getattr(input_type, 'and').type, input_type)
