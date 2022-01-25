@@ -33,6 +33,15 @@ class LookupInputTypeBuilderTest(TestCase):
         input_type = self.builder.build()
         self.assertEqual(input_type.__name__, 'UserFirstNameFilterInputType')
 
+    def test_subfield(self) -> None:
+        """Test LookupInputType creation with subfield."""
+        input_type = self.builder.add_subfield(
+            'task',
+            LookupInputTypeBuilder('UserTask', 'name').build(),
+        ).build()
+        self.assertIs(type(getattr(input_type, 'task')), graphene.Field)
+        self.assertEqual(getattr(input_type, 'task').type.__name__, 'UserTaskNameFilterInputType')
+
     def test_exact(self) -> None:
         """Test LookupInputType creation with exact field."""
         input_type = self.builder.set_exact().build()

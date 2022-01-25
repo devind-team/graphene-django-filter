@@ -13,46 +13,59 @@ class LookupInputTypeBuilder:
     def __init__(self, type_name: str, field_name: str) -> None:
         self._type_name = type_name
         self._field_name = field_name
-        self._attrs: Dict[str, UnmountedType] = {}
+        self._lookups: Dict[str, UnmountedType] = {}
+        self._subfields: Dict[str, graphene.Field] = {}
+
+    def add_subfield(
+        self,
+        subfield_name: str,
+        input_type: Type[graphene.InputObjectType],
+    ) -> 'LookupInputTypeBuilder':
+        """Add subfield for under construction type."""
+        self._subfields[subfield_name] = graphene.Field(
+            input_type,
+            description=f'{subfield_name} subfield',
+        )
+        return self
 
     def set_exact(self) -> 'LookupInputTypeBuilder':
         """Set exact field for under construction type."""
-        self._attrs['exact'] = graphene.String(description='exact lookup')
+        self._lookups['exact'] = graphene.String(description='exact lookup')
         return self
 
     def set_iexact(self) -> 'LookupInputTypeBuilder':
         """Set iexact field for under construction type."""
-        self._attrs['iexact'] = graphene.String(description='iexact lookup')
+        self._lookups['iexact'] = graphene.String(description='iexact lookup')
         return self
 
     def set_contains(self) -> 'LookupInputTypeBuilder':
         """Set contains field for under construction type."""
-        self._attrs['contains'] = graphene.String(description='contains lookup')
+        self._lookups['contains'] = graphene.String(description='contains lookup')
         return self
 
     def set_icontains(self) -> 'LookupInputTypeBuilder':
         """Set icontains field for under construction type."""
-        self._attrs['icontains'] = graphene.String(description='icontains lookup')
+        self._lookups['icontains'] = graphene.String(description='icontains lookup')
         return self
 
     def set_gt(self) -> 'LookupInputTypeBuilder':
         """Set gt field for under construction type."""
-        self._attrs['gt'] = graphene.Float(description='gt lookup')
+        self._lookups['gt'] = graphene.Float(description='gt lookup')
         return self
 
     def set_gte(self) -> 'LookupInputTypeBuilder':
         """Set gte field for under construction type."""
-        self._attrs['gte'] = graphene.Float(description='gte lookup')
+        self._lookups['gte'] = graphene.Float(description='gte lookup')
         return self
 
     def set_lt(self) -> 'LookupInputTypeBuilder':
         """Set lt field for under construction type."""
-        self._attrs['lt'] = graphene.Float(description='lt lookup')
+        self._lookups['lt'] = graphene.Float(description='lt lookup')
         return self
 
     def set_lte(self) -> 'LookupInputTypeBuilder':
         """Set lte field for under construction type."""
-        self._attrs['lte'] = graphene.Float(description='lte lookup')
+        self._lookups['lte'] = graphene.Float(description='lte lookup')
         return self
 
     def set_in(
@@ -62,9 +75,9 @@ class LookupInputTypeBuilder:
     ) -> 'LookupInputTypeBuilder':
         """Set in field for under construction type."""
         if is_string:
-            self._attrs['in'] = graphene.String(description='in lookup')
+            self._lookups['in'] = graphene.String(description='in lookup')
         else:
-            self._attrs['in'] = graphene.List(field_type, description='in lookup')
+            self._lookups['in'] = graphene.List(field_type, description='in lookup')
         return self
 
     def build(self) -> Type[graphene.InputObjectType]:
@@ -74,7 +87,7 @@ class LookupInputTypeBuilder:
             type(
                 f'{self._type_name}{capitalcase(camelcase(self._field_name))}FilterInputType',
                 (graphene.InputObjectType,),
-                self._attrs,
+                {**self._lookups, **self._subfields},
             ),
         )
 
