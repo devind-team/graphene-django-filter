@@ -3,7 +3,7 @@ max-line-length = 100
 per-file-ignores =
     __init__.py:F401
     connection_field.py:A002
-ignore = ANN002,ANN003,ANN101,ANN102,D107
+ignore = ANN002,ANN003,ANN101,ANN102,D106,D107
 
 import-order-style = pycharm
 dictionaries=en_US,python,technical,django
