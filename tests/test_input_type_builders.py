@@ -1,5 +1,4 @@
 """Input filter types builders tests."""
-
 import graphene
 from django.test import TestCase
 from graphene_django_filter.input_type_builders import (
@@ -12,14 +11,14 @@ class LookupInputTypeBuilderTest(TestCase):
     """LookupInputTypeBuilder tests."""
 
     _simple_lookups = {
-        'exact': graphene.String,
-        'iexact': graphene.String,
-        'contains': graphene.String,
-        'icontains': graphene.String,
-        'gt': graphene.Float,
-        'gte': graphene.Float,
-        'lt': graphene.Float,
-        'lte': graphene.Float,
+        **{
+            lookup: {'method': 'set_str_lookup', 'field_type': graphene.String}
+            for lookup in LookupInputTypeBuilder.str_lookups
+        },
+        **{
+            lookup: {'method': 'set_float_lookup', 'field_type': graphene.Float}
+            for lookup in LookupInputTypeBuilder.float_lookups
+        },
     }
 
     def setUp(self) -> None:
@@ -44,28 +43,13 @@ class LookupInputTypeBuilderTest(TestCase):
 
     def test_exact(self) -> None:
         """Test LookupInputType creation with exact field."""
-        input_type = self.builder.set_exact().build()
-        self.assertIs(type(getattr(input_type, 'exact')), graphene.String)
+        input_type = self.builder.set_exact(graphene.Boolean).build()
+        self.assertIs(type(getattr(input_type, 'exact')), graphene.Boolean)
         self.assertEqual(
             getattr(input_type, 'exact').kwargs, {
                 'description': 'exact lookup',
             },
         )
-
-    def test_simple(self) -> None:
-        """Test LookupInputType creation with simple fields."""
-        builder = self.builder
-        for lookup in self._simple_lookups:
-            builder = getattr(builder, f'set_{lookup}')()
-        input_type = builder.build()
-        for lookup, field_type in self._simple_lookups.items():
-            with self.subTest(input_type=input_type, lookup=lookup, field_type=field_type):
-                self.assertIs(type(getattr(input_type, lookup)), field_type)
-                self.assertEqual(
-                    getattr(input_type, lookup).kwargs, {
-                        'description': f'{lookup} lookup',
-                    },
-                )
 
     def test_string_in(self) -> None:
         """Test LookupInputType creation with in of string type field."""
@@ -89,6 +73,35 @@ class LookupInputTypeBuilderTest(TestCase):
             },
         )
 
+    def test_invalid_str_lookup(self) -> None:
+        """Test set_str_lookup method call with invalid lookup."""
+        self.assertRaises(
+            AssertionError,
+            lambda: self.builder.set_str_lookup('invalid_lookup'),
+        )
+
+    def test_invalid_float_lookup(self) -> None:
+        """Test set_float_lookup method call with invalid lookup."""
+        self.assertRaises(
+            AssertionError,
+            lambda: self.builder.set_float_lookup('invalid_lookup'),
+        )
+
+    def test_simple(self) -> None:
+        """Test LookupInputType creation with simple fields."""
+        builder = self.builder
+        for lookup, data in self._simple_lookups.items():
+            builder = getattr(builder, data['method'])(lookup)
+        input_type = builder.build()
+        for lookup, data in self._simple_lookups.items():
+            with self.subTest(input_type=input_type, lookup=lookup, data=data):
+                self.assertIs(type(getattr(input_type, lookup)), data['field_type'])
+                self.assertEqual(
+                    getattr(input_type, lookup).kwargs, {
+                        'description': f'{lookup} lookup',
+                    },
+                )
+
 
 class FilterInputTypeBuilderTest(TestCase):
     """FilterInputTypeBuilder tests."""
@@ -99,13 +112,13 @@ class FilterInputTypeBuilderTest(TestCase):
         self.field1_name = 'first_name'
         self.field1 = LookupInputTypeBuilder(self.type_name, self.field1_name)\
             .set_exact()\
-            .set_contains()\
+            .set_str_lookup('contains')\
             .build()
         self.field2_name = 'age'
         self.field2 = LookupInputTypeBuilder(self.type_name, self.field2_name)\
             .set_exact()\
-            .set_gt()\
-            .set_lt()\
+            .set_float_lookup('gt')\
+            .set_float_lookup('lt')\
             .build()
         self.builder = FilterInputTypeBuilder(self.type_name)
 

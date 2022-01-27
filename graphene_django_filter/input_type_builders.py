@@ -10,6 +10,18 @@ from stringcase import camelcase, capitalcase
 class LookupInputTypeBuilder:
     """Builder for creation lookups input type for field."""
 
+    str_lookups = (
+        'iexact',
+        'contains',
+        'icontains',
+    )
+    float_lookups = (
+        'gt',
+        'gte',
+        'lt',
+        'lte',
+    )
+
     def __init__(self, type_name: str, field_name: str) -> None:
         self._type_name = type_name
         self._field_name = field_name
@@ -28,44 +40,12 @@ class LookupInputTypeBuilder:
         )
         return self
 
-    def set_exact(self) -> 'LookupInputTypeBuilder':
+    def set_exact(
+        self,
+        field_type: Type[UnmountedType] = graphene.String,
+    ) -> 'LookupInputTypeBuilder':
         """Set exact field for under construction type."""
-        self._lookups['exact'] = graphene.String(description='exact lookup')
-        return self
-
-    def set_iexact(self) -> 'LookupInputTypeBuilder':
-        """Set iexact field for under construction type."""
-        self._lookups['iexact'] = graphene.String(description='iexact lookup')
-        return self
-
-    def set_contains(self) -> 'LookupInputTypeBuilder':
-        """Set contains field for under construction type."""
-        self._lookups['contains'] = graphene.String(description='contains lookup')
-        return self
-
-    def set_icontains(self) -> 'LookupInputTypeBuilder':
-        """Set icontains field for under construction type."""
-        self._lookups['icontains'] = graphene.String(description='icontains lookup')
-        return self
-
-    def set_gt(self) -> 'LookupInputTypeBuilder':
-        """Set gt field for under construction type."""
-        self._lookups['gt'] = graphene.Float(description='gt lookup')
-        return self
-
-    def set_gte(self) -> 'LookupInputTypeBuilder':
-        """Set gte field for under construction type."""
-        self._lookups['gte'] = graphene.Float(description='gte lookup')
-        return self
-
-    def set_lt(self) -> 'LookupInputTypeBuilder':
-        """Set lt field for under construction type."""
-        self._lookups['lt'] = graphene.Float(description='lt lookup')
-        return self
-
-    def set_lte(self) -> 'LookupInputTypeBuilder':
-        """Set lte field for under construction type."""
-        self._lookups['lte'] = graphene.Float(description='lte lookup')
+        self._lookups['exact'] = field_type(description='exact lookup')
         return self
 
     def set_in(
@@ -78,6 +58,20 @@ class LookupInputTypeBuilder:
             self._lookups['in'] = graphene.String(description='in lookup')
         else:
             self._lookups['in'] = graphene.List(field_type, description='in lookup')
+        return self
+
+    def set_str_lookup(self, lookup: str) -> 'LookupInputTypeBuilder':
+        """Set str field for under construction type."""
+        assert lookup in self.str_lookups,\
+            f'{lookup} is invalid. Valid lookups are [{", ".join(self.str_lookups)}]'
+        self._lookups[lookup] = graphene.String(description=f'{lookup} lookup')
+        return self
+
+    def set_float_lookup(self, lookup: str) -> 'LookupInputTypeBuilder':
+        """Set float field for under construction type."""
+        assert lookup in self.float_lookups,\
+            f'{lookup} is invalid. Valid lookups are [{", ".join(self.float_lookups)}]'
+        self._lookups[lookup] = graphene.Float(description=f'{lookup} lookup')
         return self
 
     def build(self) -> Type[graphene.InputObjectType]:
@@ -106,7 +100,7 @@ class FilterInputTypeBuilder:
         field_name: str,
         lookup_input_type: Type[graphene.InputObjectType],
     ) -> 'FilterInputTypeBuilder':
-        """Add field and lookup input type."""
+        """Add lookup input type field."""
         self._lookup_input_types[field_name] = lookup_input_type
         return self
 
