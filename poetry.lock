@@ -7,6 +7,21 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "anytree"
+version = "2.8.0"
+description = "Powerful and Lightweight Python Tree Data Structure.."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = ">=1.9.0"
+
+[package.extras]
+dev = ["check-manifest"]
+test = ["coverage"]
+
+[[package]]
 name = "asgiref"
 version = "3.4.1"
 description = "ASGI specs, helper code, and adapters"
@@ -470,12 +485,16 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2"
-content-hash = "a65b8634ef3eb430f04da86f180ca76cc4f5901435d6dbd0524ebebb0aee0ee5"
+content-hash = "ecb59d9a90ddbcc848bf6b443af9ec02d80b460d6d0ddb8b78b090899a9addf8"
 
 [metadata.files]
 aniso8601 = [
     {file = "aniso8601-6.0.0-py2.py3-none-any.whl", hash = "sha256:bb167645c79f7a438f9dfab6161af9bed75508c645b1f07d1158240841d22673"},
     {file = "aniso8601-6.0.0.tar.gz", hash = "sha256:b8a6a9b24611fc50cf2d9b45d371bfdc4fd0581d1cc52254f5502130a776d4af"},
+]
+anytree = [
+    {file = "anytree-2.8.0-py2.py3-none-any.whl", hash = "sha256:14c55ac77492b11532395049a03b773d14c7e30b22aa012e337b1e983de31521"},
+    {file = "anytree-2.8.0.tar.gz", hash = "sha256:3f0f93f355a91bc3e6245319bf4c1d50e3416cc7a35cc1133c1ff38306bbccab"},
 ]
 asgiref = [
     {file = "asgiref-3.4.1-py3-none-any.whl", hash = "sha256:ffc141aa908e6f175673e7b1b3b7af4fdb0ecb738fc5c8b88f69f055c2415214"},

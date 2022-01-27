@@ -22,6 +22,7 @@ graphene = "2.1.9"
 graphene-django = "^2.15.0"
 django-filter = "^21.1"
 stringcase = "^1.2.0"
+anytree = "^2.8.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
