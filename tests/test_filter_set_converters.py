@@ -4,8 +4,9 @@ from anytree import Node
 from anytree.exporter import DictExporter
 from django.test import TestCase
 from graphene_django_filter.filter_set_converters import (
+    create_field_filter_input_types,
     filter_set_to_trees,
-    get_input_type_name,
+    get_field_filter_input_type_name,
     sequence_to_tree,
     try_add_sequence,
 )
@@ -51,11 +52,29 @@ class FilterSetConverterTest(TestCase):
             ),
         ]
 
-    def test_get_input_type_name(self) -> None:
-        """Test the `get_input_type_name` function."""
+    def test_create_field_filter_input_types(self) -> None:
+        """Test the `create_field_filter_input_types` function."""
+        trees = [
+            create_field_filter_input_types('TaskType', tree, TaskFilter)
+            for tree in self.task_filter_trees
+        ]
+        name_input_type = getattr(trees[0], 'input_type')
+        last_name_input_type = getattr(trees[1].children[0], 'input_type')
+        email_input_type = getattr(trees[1].children[1], 'input_type')
+        self.assertEqual('TaskNameFieldFilterInputType', name_input_type.__name__)
+        self.assertTrue(hasattr(name_input_type, 'exact'))
+        self.assertEqual('TaskUserLastNameFieldFilterInputType', last_name_input_type.__name__)
+        self.assertTrue(hasattr(last_name_input_type, 'exact'))
+        self.assertEqual('TaskUserEmailFieldFilterInputType', email_input_type.__name__)
+        self.assertTrue(hasattr(email_input_type, 'iexact'))
+        self.assertTrue(hasattr(email_input_type, 'contains'))
+        self.assertTrue(hasattr(email_input_type, 'icontains'))
+
+    def test_get_field_filter_input_type_name(self) -> None:
+        """Test the `get_field_filter_input_type_name` function."""
         self.assertEqual(
-            'TaskUserFirstNameFilterInputType',
-            get_input_type_name(
+            'TaskUserFirstNameFieldFilterInputType',
+            get_field_filter_input_type_name(
                 'TaskType', (Node(name='user'), Node(name='first_name')),
             ),
         )
