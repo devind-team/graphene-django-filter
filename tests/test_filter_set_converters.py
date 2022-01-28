@@ -54,9 +54,10 @@ class FilterSetConverterTest(TestCase):
     def test_get_input_type_name(self) -> None:
         """Test the `get_input_type_name` function."""
         self.assertEqual(
+            'TaskUserFirstNameFilterInputType',
             get_input_type_name(
                 'TaskType', (Node(name='user'), Node(name='first_name')),
-            ), 'TaskUserFirstNameFilterInputType',
+            ),
         )
 
     def test_filter_set_to_trees(self) -> None:
@@ -64,8 +65,8 @@ class FilterSetConverterTest(TestCase):
         trees = filter_set_to_trees(TaskFilter)
         exporter = DictExporter()
         self.assertEqual(
-            [exporter.export(tree) for tree in trees],
             [exporter.export(tree) for tree in self.task_filter_trees],
+            [exporter.export(tree) for tree in trees],
         )
 
     def test_possible_try_add_sequence(self) -> None:
@@ -77,9 +78,9 @@ class FilterSetConverterTest(TestCase):
                 {'name': 'field6'},
             ),
         )
-        self.assertEqual(is_mutated, True)
+        self.assertTrue(is_mutated)
         self.assertEqual(
-            DictExporter().export(self.abstract_tree), {
+            {
                 'name': 'field1',
                 'children': [
                     {
@@ -97,23 +98,24 @@ class FilterSetConverterTest(TestCase):
                     },
                 ],
             },
+            DictExporter().export(self.abstract_tree),
         )
 
     def test_impossible_try_add_sequence(self) -> None:
         """Test the `try_add_sequence` function when adding a sequence is impossible."""
         is_mutated = try_add_sequence(self.abstract_tree, ({'name': 'field5'}, {'name': 'field6'}))
-        self.assertEqual(is_mutated, False)
+        self.assertFalse(is_mutated)
 
     def test_sequence_to_tree(self) -> None:
         """Test the `sequence_to_tree` function."""
         self.assertEqual(
+            {
+                'name': 'field1',
+                'children': [{'name': 'field2'}],
+            },
             DictExporter().export(
                 sequence_to_tree(
                     ({'name': 'field1'}, {'name': 'field2'}),
                 ),
             ),
-            {
-                'name': 'field1',
-                'children': [{'name': 'field2'}],
-            },
         )
