@@ -4,22 +4,23 @@ from typing import List, Optional, Sequence, Type
 
 import graphene
 from anytree import Node
-from django.db.models import Field
+from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django_filters import Filter, FilterSet
 from graphene.types.unmountedtype import UnmountedType
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
+from stringcase import camelcase, capitalcase
 
 
 def get_field(filter_set_class: Type[FilterSet], name: str, filter_field: Filter) -> UnmountedType:
-    """Return Graphene type from filter field.
+    """Return Graphene type from a filter field.
 
-    It is a partial copy of the get_filtering_args_from_filterset method from graphene-django.
+    It is a partial copy of the `get_filtering_args_from_filterset` method from graphene-django.
     https://github.com/graphql-python/graphene-django/blob/775644b5369bdc5fbb45d3535ae391a069ebf9d4/graphene_django/filter/utils.py#L25
     """
     model = filter_set_class._meta.model
-    form_field: Optional[Field] = None
+    form_field: Optional[models.Field] = None
     filter_type: str = filter_field.lookup_expr
     if name in getattr(filter_set_class, 'declared_filters'):
         form_field = filter_field.field
@@ -38,6 +39,17 @@ def get_field(filter_set_class: Type[FilterSet], name: str, filter_field: Filter
     field_type = field.Argument()
     field_type.description = getattr(filter_field, 'label')
     return field_type
+
+
+def get_input_type_name(type_name: str, node_path: Sequence[Node]) -> str:
+    """Return input type name from a type name and node path."""
+    field_name = ''.join(
+        map(
+            lambda node: capitalcase(camelcase(node.name)),
+            node_path,
+        ),
+    )
+    return f'{type_name.replace("Type", "")}{field_name}FilterInputType'
 
 
 def filter_set_to_trees(filter_set_class: Type[FilterSet]) -> List[Node]:

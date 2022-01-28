@@ -5,6 +5,7 @@ from anytree.exporter import DictExporter
 from django.test import TestCase
 from graphene_django_filter.filter_set_converters import (
     filter_set_to_trees,
+    get_input_type_name,
     sequence_to_tree,
     try_add_sequence,
 )
@@ -50,8 +51,16 @@ class FilterSetConverterTest(TestCase):
             ),
         ]
 
+    def test_get_input_type_name(self) -> None:
+        """Test the `get_input_type_name` function."""
+        self.assertEqual(
+            get_input_type_name(
+                'TaskType', (Node(name='user'), Node(name='first_name')),
+            ), 'TaskUserFirstNameFilterInputType',
+        )
+
     def test_filter_set_to_trees(self) -> None:
-        """Test the filter_set_to_trees function."""
+        """Test the `filter_set_to_trees` function."""
         trees = filter_set_to_trees(TaskFilter)
         exporter = DictExporter()
         self.assertEqual(
@@ -60,7 +69,7 @@ class FilterSetConverterTest(TestCase):
         )
 
     def test_possible_try_add_sequence(self) -> None:
-        """Test the try_add_sequence function when adding a sequence is possible."""
+        """Test the `try_add_sequence` function when adding a sequence is possible."""
         is_mutated = try_add_sequence(
             self.abstract_tree, (
                 {'name': 'field1'},
@@ -91,12 +100,12 @@ class FilterSetConverterTest(TestCase):
         )
 
     def test_impossible_try_add_sequence(self) -> None:
-        """Test the try_add_sequence function when adding a sequence is impossible."""
+        """Test the `try_add_sequence` function when adding a sequence is impossible."""
         is_mutated = try_add_sequence(self.abstract_tree, ({'name': 'field5'}, {'name': 'field6'}))
         self.assertEqual(is_mutated, False)
 
     def test_sequence_to_tree(self) -> None:
-        """Test the sequence_to_tree function."""
+        """Test the `sequence_to_tree` function."""
         self.assertEqual(
             DictExporter().export(
                 sequence_to_tree(
