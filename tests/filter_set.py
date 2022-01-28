@@ -23,10 +23,14 @@ class UserFilter(django_filters.FilterSet):
 class TaskFilter(django_filters.FilterSet):
     """Task FilterSet class for testing."""
 
-    user__email_exact = django_filters.CharFilter(field_name='user__email', lookup_expr='exact')
-    user__email_contains = django_filters.CharFilter(
+    user__email__iexact = django_filters.CharFilter(field_name='user__email', lookup_expr='iexact')
+    user__email__contains = django_filters.CharFilter(
         field_name='user__email',
         lookup_expr='contains',
+    )
+    user__email__icontains = django_filters.CharFilter(
+        field_name='user__email',
+        lookup_expr='icontains',
     )
 
     class Meta:
