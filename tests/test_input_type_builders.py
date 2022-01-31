@@ -1,144 +1,151 @@
-"""Input filter types builders tests."""
-import graphene
+"""Input type builders tests."""
+
+from anytree import Node
+from anytree.exporter import DictExporter
 from django.test import TestCase
 from graphene_django_filter.input_type_builders import (
-    FilterInputTypeBuilder,
-    LookupInputTypeBuilder,
+    create_field_filter_input_type,
+    create_filter_input_subtype,
+    create_filter_input_type,
+    filter_set_to_trees,
+    sequence_to_tree,
+    try_add_sequence,
 )
 
+from .filter_set import TaskFilter
 
-class LookupInputTypeBuilderTest(TestCase):
-    """LookupInputTypeBuilder tests."""
 
-    _simple_lookups = {
-        **{
-            lookup: {'method': 'set_str_lookup', 'field_type': graphene.String}
-            for lookup in LookupInputTypeBuilder.str_lookups
-        },
-        **{
-            lookup: {'method': 'set_float_lookup', 'field_type': graphene.Float}
-            for lookup in LookupInputTypeBuilder.float_lookups
-        },
-    }
+class InputTypeBuildersTest(TestCase):
+    """Input type builders tests."""
 
     def setUp(self) -> None:
-        """Set up LookupInputTypeBuilder tests."""
-        self.builder = LookupInputTypeBuilder(
-            'User', 'first_name',
+        """Set up input type builders tests."""
+        self.abstract_tree_root = Node(
+            'field1', children=(
+                Node(
+                    'field2', children=(
+                        Node(
+                            'field3', children=(
+                                Node('field4'),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         )
+        self.task_filter_trees_roots = [
+            Node(name='name', children=[Node(name='exact', filter_name='name')]),
+            Node(
+                name='user', children=[
+                    Node(
+                        name='last_name', children=[
+                            Node(name='exact', filter_name='user__last_name'),
+                        ],
+                    ),
+                    Node(
+                        name='email', children=[
+                            Node(name='iexact', filter_name='user__email__iexact'),
+                            Node(name='contains', filter_name='user__email__contains'),
+                            Node(name='icontains', filter_name='user__email__icontains'),
+                        ],
+                    ),
+                ],
+            ),
+        ]
 
-    def test_name(self) -> None:
-        """Test that LookupInputType will be created with the correct name."""
-        input_type = self.builder.build()
-        self.assertEqual('UserFirstNameFilterInputType', input_type.__name__)
-
-    def test_subfield(self) -> None:
-        """Test LookupInputType creation with subfield."""
-        input_type = self.builder.add_subfield(
-            'task',
-            LookupInputTypeBuilder('UserTask', 'name').build(),
-        ).build()
-        self.assertIs(graphene.Field, type(getattr(input_type, 'task')))
-        self.assertEqual('UserTaskNameFilterInputType', getattr(input_type, 'task').type.__name__)
-
-    def test_exact(self) -> None:
-        """Test LookupInputType creation with exact field."""
-        input_type = self.builder.set_exact(graphene.Boolean).build()
-        self.assertIs(graphene.Boolean, type(getattr(input_type, 'exact')))
+    def test_sequence_to_tree(self) -> None:
+        """Test the `sequence_to_tree` function."""
         self.assertEqual(
-            {'description': 'exact lookup'},
-            getattr(input_type, 'exact').kwargs,
+            {
+                'name': 'field1',
+                'children': [{'name': 'field2'}],
+            },
+            DictExporter().export(
+                sequence_to_tree(
+                    ({'name': 'field1'}, {'name': 'field2'}),
+                ),
+            ),
         )
 
-    def test_string_in(self) -> None:
-        """Test LookupInputType creation with in of string type field."""
-        input_type = self.builder.set_in(is_string=True).build()
-        self.assertIs(graphene.String, type(getattr(input_type, 'in')))
+    def test_possible_try_add_sequence(self) -> None:
+        """Test the `try_add_sequence` function when adding a sequence is possible."""
+        is_mutated = try_add_sequence(
+            self.abstract_tree_root, (
+                {'name': 'field1'},
+                {'name': 'field5'},
+                {'name': 'field6'},
+            ),
+        )
+        self.assertTrue(is_mutated)
         self.assertEqual(
-            {'description': 'in lookup'},
-            getattr(input_type, 'in').kwargs,
+            {
+                'name': 'field1',
+                'children': [
+                    {
+                        'name': 'field2',
+                        'children': [
+                            {
+                                'name': 'field3',
+                                'children': [{'name': 'field4'}],
+                            },
+                        ],
+                    },
+                    {
+                        'name': 'field5',
+                        'children': [{'name': 'field6'}],
+                    },
+                ],
+            },
+            DictExporter().export(self.abstract_tree_root),
         )
 
-    def test_float_list_in(self) -> None:
-        """Test LookupInputType creation with in of list of float type field."""
-        input_type = self.builder.set_in(graphene.Float).build()
-        in_field = getattr(input_type, 'in')
-        self.assertIs(graphene.List, type(in_field))
-        self.assertIs(graphene.Float, in_field.of_type)
+    def test_impossible_try_add_sequence(self) -> None:
+        """Test the `try_add_sequence` function when adding a sequence is impossible."""
+        is_mutated = try_add_sequence(
+            self.abstract_tree_root,
+            ({'name': 'field5'}, {'name': 'field6'}),
+        )
+        self.assertFalse(is_mutated)
+
+    def test_filter_set_to_trees(self) -> None:
+        """Test the `filter_set_to_trees` function."""
+        roots = filter_set_to_trees(TaskFilter)
+        exporter = DictExporter()
         self.assertEqual(
-            {'description': 'in lookup'},
-            getattr(input_type, 'in').kwargs,
+            [exporter.export(root) for root in self.task_filter_trees_roots],
+            [exporter.export(root) for root in roots],
         )
 
-    def test_invalid_str_lookup(self) -> None:
-        """Test set_str_lookup method call with invalid lookup."""
-        self.assertRaises(
-            AssertionError,
-            lambda: self.builder.set_str_lookup('invalid_lookup'),
+    def test_create_field_filter_input_type(self) -> None:
+        """Test the `create_field_filter_input_type` function."""
+        input_object_type = create_field_filter_input_type(
+            self.task_filter_trees_roots[1].children[1],
+            TaskFilter,
+            'TaskUser',
         )
+        self.assertEqual('TaskUserEmailFieldFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'iexact'))
+        self.assertTrue(hasattr(input_object_type, 'contains'))
+        self.assertTrue(hasattr(input_object_type, 'icontains'))
 
-    def test_invalid_float_lookup(self) -> None:
-        """Test set_float_lookup method call with invalid lookup."""
-        self.assertRaises(
-            AssertionError,
-            lambda: self.builder.set_float_lookup('invalid_lookup'),
+    def test_create_filter_input_subtype(self) -> None:
+        """Test the `create_filter_input_subtype` function."""
+        input_object_type = create_filter_input_subtype(
+            self.task_filter_trees_roots[1],
+            TaskFilter,
+            'Task',
         )
+        self.assertEqual('TaskUserFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'last_name'))
+        self.assertTrue(hasattr(input_object_type, 'email'))
 
-    def test_simple(self) -> None:
-        """Test LookupInputType creation with simple fields."""
-        builder = self.builder
-        for lookup, data in self._simple_lookups.items():
-            builder = getattr(builder, data['method'])(lookup)
-        input_type = builder.build()
-        for lookup, data in self._simple_lookups.items():
-            with self.subTest(input_type=input_type, lookup=lookup, data=data):
-                self.assertIs(data['field_type'], type(getattr(input_type, lookup)))
-                self.assertEqual(
-                    {'description': f'{lookup} lookup'},
-                    getattr(input_type, lookup).kwargs,
-                )
-
-
-class FilterInputTypeBuilderTest(TestCase):
-    """FilterInputTypeBuilder tests."""
-
-    def setUp(self) -> None:
-        """Set up FilterInputTypeBuilder tests."""
-        self.type_name = 'User'
-        self.field1_name = 'first_name'
-        self.field1 = LookupInputTypeBuilder(self.type_name, self.field1_name)\
-            .set_exact()\
-            .set_str_lookup('contains')\
-            .build()
-        self.field2_name = 'age'
-        self.field2 = LookupInputTypeBuilder(self.type_name, self.field2_name)\
-            .set_exact()\
-            .set_float_lookup('gt')\
-            .set_float_lookup('lt')\
-            .build()
-        self.builder = FilterInputTypeBuilder(self.type_name)
-
-    def test_base(self) -> None:
-        """Test FilterInputType creation without any boolean operation fields."""
-        input_type = self.builder.add_lookup_input_type(self.field1_name, self.field1)\
-            .add_lookup_input_type(self.field2_name, self.field2)\
-            .build()
-        self.assertEqual(f'{self.type_name}FilterInputType', input_type.__name__)
-        self.assertIs(graphene.Field, type(getattr(input_type, self.field1_name)))
-        self.assertIs(graphene.Field, type(getattr(input_type, self.field2_name)))
-
-    def test_or(self) -> None:
-        """Test FilterInputType creation with or field."""
-        input_type = self.builder.add_lookup_input_type(self.field1_name, self.field1)\
-            .set_or(True)\
-            .build()
-        self.assertIs(graphene.Field, type(getattr(input_type, 'or')))
-        self.assertIs(input_type, getattr(input_type, 'or').type)
-
-    def test_and(self) -> None:
-        """Test FilterInputType creation with and field."""
-        input_type = self.builder.add_lookup_input_type(self.field1_name, self.field1)\
-            .set_and(True)\
-            .build()
-        self.assertIs(graphene.Field, type(getattr(input_type, 'and')))
-        self.assertIs(input_type, getattr(input_type, 'and').type)
+    def test_create_filter_input_type(self) -> None:
+        """Test the `create_filter_input_type` function."""
+        input_object_type = create_filter_input_type(
+            self.task_filter_trees_roots,
+            TaskFilter,
+            'Task',
+        )
+        self.assertEqual('TaskFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'name'))
+        self.assertTrue(hasattr(input_object_type, 'user'))
