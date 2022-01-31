@@ -13,6 +13,25 @@ from graphene_django.forms.converter import convert_form_field
 from stringcase import camelcase, capitalcase
 
 
+def get_filtering_args_from_filterset(
+    filter_set_class: Type[FilterSet],
+    node_type: Type[graphene.ObjectType],
+) -> Dict[str, graphene.InputField]:
+    """Inspect a FilterSet and produce the arguments to pass to a Graphene Field.
+
+    These arguments will be available to filter against in the GraphQL.
+    """
+    return {
+        'filter': graphene.InputField(
+            create_filter_input_type(
+                filter_set_to_trees(filter_set_class),
+                filter_set_class,
+                node_type.__name__.replace('Type', ''),
+            ), description='Advanced filter field',
+        ),
+    }
+
+
 def create_filter_input_type(
     roots: List[Node],
     filter_set_class: Type[FilterSet],

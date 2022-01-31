@@ -8,11 +8,13 @@ from graphene_django_filter.input_type_builders import (
     create_filter_input_subtype,
     create_filter_input_type,
     filter_set_to_trees,
+    get_filtering_args_from_filterset,
     sequence_to_tree,
     try_add_sequence,
 )
 
-from .filter_set import TaskFilter
+from .filter_sets import TaskFilter
+from .object_types import TaskFilterSetClassType
 
 
 class InputTypeBuildersTest(TestCase):
@@ -149,3 +151,12 @@ class InputTypeBuildersTest(TestCase):
         self.assertEqual('TaskFilterInputType', input_object_type.__name__)
         self.assertTrue(hasattr(input_object_type, 'name'))
         self.assertTrue(hasattr(input_object_type, 'user'))
+
+    def test_get_filtering_args_from_filterset(self) -> None:
+        """Test the `get_filtering_args_from_filterset` function."""
+        filtering_args = get_filtering_args_from_filterset(TaskFilter, TaskFilterSetClassType)
+        self.assertEqual(('filter',), tuple(filtering_args.keys()))
+        self.assertEqual(
+            'TaskFilterSetClassFilterInputType',
+            filtering_args['filter'].type.__name__,
+        )

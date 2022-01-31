@@ -1,9 +1,9 @@
-"""Types classes."""
+"""Object Types classes."""
 
 import graphene
 from graphene_django import DjangoObjectType
 
-from .filter_set import TaskFilter, UserFilter
+from .filter_sets import TaskFilter, UserFilter
 from .models import Task, User
 
 
