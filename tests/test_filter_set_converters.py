@@ -4,9 +4,10 @@ from anytree import Node
 from anytree.exporter import DictExporter
 from django.test import TestCase
 from graphene_django_filter.filter_set_converters import (
-    create_field_filter_input_types,
+    create_field_filter_input_type,
+    create_filter_input_subtype,
+    create_filter_input_type,
     filter_set_to_trees,
-    get_field_filter_input_type_name,
     sequence_to_tree,
     try_add_sequence,
 )
@@ -19,7 +20,7 @@ class FilterSetConverterTest(TestCase):
 
     def setUp(self) -> None:
         """Set up FilterSet converters tests."""
-        self.abstract_tree = Node(
+        self.abstract_tree_root = Node(
             'field1', children=(
                 Node(
                     'field2', children=(
@@ -32,7 +33,7 @@ class FilterSetConverterTest(TestCase):
                 ),
             ),
         )
-        self.task_filter_trees = [
+        self.task_filter_trees_roots = [
             Node(name='name', children=[Node(name='exact', filter_name='name')]),
             Node(
                 name='user', children=[
@@ -52,46 +53,24 @@ class FilterSetConverterTest(TestCase):
             ),
         ]
 
-    def test_create_field_filter_input_types(self) -> None:
-        """Test the `create_field_filter_input_types` function."""
-        trees = [
-            create_field_filter_input_types('TaskType', tree, TaskFilter)
-            for tree in self.task_filter_trees
-        ]
-        name_input_type = getattr(trees[0], 'input_type')
-        last_name_input_type = getattr(trees[1].children[0], 'input_type')
-        email_input_type = getattr(trees[1].children[1], 'input_type')
-        self.assertEqual('TaskNameFieldFilterInputType', name_input_type.__name__)
-        self.assertTrue(hasattr(name_input_type, 'exact'))
-        self.assertEqual('TaskUserLastNameFieldFilterInputType', last_name_input_type.__name__)
-        self.assertTrue(hasattr(last_name_input_type, 'exact'))
-        self.assertEqual('TaskUserEmailFieldFilterInputType', email_input_type.__name__)
-        self.assertTrue(hasattr(email_input_type, 'iexact'))
-        self.assertTrue(hasattr(email_input_type, 'contains'))
-        self.assertTrue(hasattr(email_input_type, 'icontains'))
-
-    def test_get_field_filter_input_type_name(self) -> None:
-        """Test the `get_field_filter_input_type_name` function."""
+    def test_sequence_to_tree(self) -> None:
+        """Test the `sequence_to_tree` function."""
         self.assertEqual(
-            'TaskUserFirstNameFieldFilterInputType',
-            get_field_filter_input_type_name(
-                'TaskType', (Node(name='user'), Node(name='first_name')),
+            {
+                'name': 'field1',
+                'children': [{'name': 'field2'}],
+            },
+            DictExporter().export(
+                sequence_to_tree(
+                    ({'name': 'field1'}, {'name': 'field2'}),
+                ),
             ),
-        )
-
-    def test_filter_set_to_trees(self) -> None:
-        """Test the `filter_set_to_trees` function."""
-        trees = filter_set_to_trees(TaskFilter)
-        exporter = DictExporter()
-        self.assertEqual(
-            [exporter.export(tree) for tree in self.task_filter_trees],
-            [exporter.export(tree) for tree in trees],
         )
 
     def test_possible_try_add_sequence(self) -> None:
         """Test the `try_add_sequence` function when adding a sequence is possible."""
         is_mutated = try_add_sequence(
-            self.abstract_tree, (
+            self.abstract_tree_root, (
                 {'name': 'field1'},
                 {'name': 'field5'},
                 {'name': 'field6'},
@@ -117,24 +96,56 @@ class FilterSetConverterTest(TestCase):
                     },
                 ],
             },
-            DictExporter().export(self.abstract_tree),
+            DictExporter().export(self.abstract_tree_root),
         )
 
     def test_impossible_try_add_sequence(self) -> None:
         """Test the `try_add_sequence` function when adding a sequence is impossible."""
-        is_mutated = try_add_sequence(self.abstract_tree, ({'name': 'field5'}, {'name': 'field6'}))
+        is_mutated = try_add_sequence(
+            self.abstract_tree_root,
+            ({'name': 'field5'}, {'name': 'field6'}),
+        )
         self.assertFalse(is_mutated)
 
-    def test_sequence_to_tree(self) -> None:
-        """Test the `sequence_to_tree` function."""
+    def test_filter_set_to_trees(self) -> None:
+        """Test the `filter_set_to_trees` function."""
+        roots = filter_set_to_trees(TaskFilter)
+        exporter = DictExporter()
         self.assertEqual(
-            {
-                'name': 'field1',
-                'children': [{'name': 'field2'}],
-            },
-            DictExporter().export(
-                sequence_to_tree(
-                    ({'name': 'field1'}, {'name': 'field2'}),
-                ),
-            ),
+            [exporter.export(root) for root in self.task_filter_trees_roots],
+            [exporter.export(root) for root in roots],
         )
+
+    def test_create_field_filter_input_type(self) -> None:
+        """Test the `create_field_filter_input_type` function."""
+        input_object_type = create_field_filter_input_type(
+            self.task_filter_trees_roots[1].children[1],
+            TaskFilter,
+            'TaskUser',
+        )
+        self.assertEqual('TaskUserEmailFieldFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'iexact'))
+        self.assertTrue(hasattr(input_object_type, 'contains'))
+        self.assertTrue(hasattr(input_object_type, 'icontains'))
+
+    def test_create_filter_input_subtype(self) -> None:
+        """Test the `create_filter_input_subtype` function."""
+        input_object_type = create_filter_input_subtype(
+            self.task_filter_trees_roots[1],
+            TaskFilter,
+            'Task',
+        )
+        self.assertEqual('TaskUserFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'last_name'))
+        self.assertTrue(hasattr(input_object_type, 'email'))
+
+    def test_create_filter_input_type(self) -> None:
+        """Test the `create_filter_input_type` function."""
+        input_object_type = create_filter_input_type(
+            self.task_filter_trees_roots,
+            TaskFilter,
+            'Task',
+        )
+        self.assertEqual('TaskFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'name'))
+        self.assertTrue(hasattr(input_object_type, 'user'))

@@ -1,12 +1,9 @@
 """Functions for converting a FilterSet class to a tree and then to an input type."""
 
-from typing import Dict, List, Optional, Sequence, Type
+from typing import Dict, List, Optional, Sequence, Type, cast
 
 import graphene
 from anytree import Node
-from anytree.exporter import DictExporter
-from anytree.importer import DictImporter
-from anytree.search import findall_by_attr
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django_filters import Filter, FilterSet
@@ -16,38 +13,87 @@ from graphene_django.forms.converter import convert_form_field
 from stringcase import camelcase, capitalcase
 
 
-def create_field_filter_input_types(
-    type_name: str,
-    tree: Node,
+def create_filter_input_type(
+    roots: List[Node],
     filter_set_class: Type[FilterSet],
-) -> Node:
-    """Create field filter input types from filter set tree leaves.
+    type_name: str,
+) -> Type[graphene.InputObjectType]:
+    """Create a filter input type from filter set trees."""
+    input_type: Optional[Type[graphene.InputObjectType]] = None
 
-    This function return new tree.
-    """
-    tree_copy = DictImporter().import_(DictExporter().export(tree))
-    for field_node in findall_by_attr(tree_copy, name='height', value=1):
-        fields: Dict[str, UnmountedType] = {}
-        for lookup_node in field_node.children:
-            fields[lookup_node.name] = get_field(
+    def get_input_type() -> Optional[Type[graphene.InputObjectType]]:
+        return input_type
+
+    input_type = cast(
+        Type[graphene.InputObjectType],
+        type(
+            f'{type_name}FilterInputType',
+            (graphene.InputObjectType,),
+            {
+                **{
+                    root.name: graphene.InputField(
+                        create_filter_input_subtype(root, filter_set_class, type_name),
+                        description=f'{root.name} subfield',
+                    )
+                    for root in roots
+                },
+                'or': graphene.InputField(get_input_type, description='Or field'),
+                'and': graphene.InputField(get_input_type, description='And field'),
+            },
+        ),
+    )
+    return input_type
+
+
+def create_filter_input_subtype(
+    root: Node,
+    filter_set_class: Type[FilterSet],
+    prefix: str,
+) -> Type[graphene.InputObjectType]:
+    """Create a filter input subtype from a filter set subtree."""
+    if root.height == 1:
+        return create_field_filter_input_type(root, filter_set_class, prefix)
+    fields: Dict[str, graphene.InputField] = {}
+    for child in root.children:
+        fields[child.name] = graphene.InputField(
+            create_filter_input_subtype(
+                child,
                 filter_set_class,
-                lookup_node.filter_name,
-                filter_set_class.base_filters[lookup_node.filter_name],
-            )
-        input_type = type(
-            get_field_filter_input_type_name(type_name, field_node.path),
+                prefix + capitalcase(camelcase(root.name)),
+            ),
+            description=f'{child.name} subfield',
+        )
+    return cast(
+        Type[graphene.InputObjectType],
+        type(
+            f'{prefix}{capitalcase(camelcase(root.name))}FilterInputType',
             (graphene.InputObjectType,),
             fields,
+        ),
+    )
+
+
+def create_field_filter_input_type(
+    root: Node,
+    filter_set_class: Type[FilterSet],
+    prefix: str,
+) -> Type[graphene.InputObjectType]:
+    """Create a field filter input type from filter set tree leaves."""
+    fields: Dict[str, UnmountedType] = {}
+    for lookup_node in root.children:
+        fields[lookup_node.name] = get_field(
+            filter_set_class,
+            lookup_node.filter_name,
+            filter_set_class.base_filters[lookup_node.filter_name],
         )
-        new_node = Node(name=field_node.name, input_type=input_type)
-        if tree_copy == field_node:
-            return new_node
-        else:
-            field_node.parent.children = [
-                *(node for node in field_node.parent.children if node is not field_node),
-                new_node,
-            ]
-    return tree_copy
+    return cast(
+        Type[graphene.InputObjectType],
+        type(
+            f'{prefix}{capitalcase(camelcase(root.name))}FieldFilterInputType',
+            (graphene.InputObjectType,),
+            fields,
+        ),
+    )
 
 
 def get_field(filter_set_class: Type[FilterSet], name: str, filter_field: Filter) -> UnmountedType:
@@ -73,24 +119,13 @@ def get_field(filter_set_class: Type[FilterSet], name: str, filter_field: Filter
         field = convert_form_field(form_field)
     if filter_type in ('in', 'range'):
         field = graphene.List(field.get_type())
-    field_type = field.Argument()
+    field_type = field.InputField()
     field_type.description = getattr(filter_field, 'label')
     return field_type
 
 
-def get_field_filter_input_type_name(type_name: str, node_path: Sequence[Node]) -> str:
-    """Return field filter input type name from a type name and node path."""
-    field_name = ''.join(
-        map(
-            lambda node: capitalcase(camelcase(node.name)),
-            node_path,
-        ),
-    )
-    return f'{type_name.replace("Type", "")}{field_name}FieldFilterInputType'
-
-
 def filter_set_to_trees(filter_set_class: Type[FilterSet]) -> List[Node]:
-    """Convert a FilterSet class to a tree."""
+    """Convert a FilterSet class to trees."""
     trees: List[Node] = []
     for filter_name, filter_value in filter_set_class.base_filters.items():
         values = [
@@ -103,17 +138,17 @@ def filter_set_to_trees(filter_set_class: Type[FilterSet]) -> List[Node]:
     return trees
 
 
-def try_add_sequence(tree: Node, values: Sequence[dict]) -> bool:
+def try_add_sequence(root: Node, values: Sequence[dict]) -> bool:
     """Try to add a sequence to a tree.
 
     Return a flag indicating whether the mutation was made.
     """
-    if tree.name == values[0]['name']:
-        for child in tree.children:
+    if root.name == values[0]['name']:
+        for child in root.children:
             is_mutated = try_add_sequence(child, values[1:])
             if is_mutated:
                 return True
-        tree.children = (*tree.children, sequence_to_tree(values[1:]))
+        root.children = (*root.children, sequence_to_tree(values[1:]))
         return True
     else:
         return False
