@@ -10,14 +10,14 @@ class UserFilter(django_filters.FilterSet):
 
     class Meta:
         model = User
-        fields = [
+        fields = (
             'first_name',
             'last_name',
             'sir_name',
             'email',
             'is_active',
             'birthday',
-        ]
+        )
 
 
 class TaskFilter(django_filters.FilterSet):
@@ -35,7 +35,7 @@ class TaskFilter(django_filters.FilterSet):
 
     class Meta:
         model = Task
-        fields = [
+        fields = (
             'name',
             'user__last_name',
-        ]
+        )
