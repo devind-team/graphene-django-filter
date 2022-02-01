@@ -1,4 +1,4 @@
-"""Object Types classes."""
+"""DjangoObjectType classes."""
 
 import graphene
 from graphene_django import DjangoObjectType
@@ -12,6 +12,7 @@ class UserFilterFieldsType(DjangoObjectType):
 
     class Meta:
         model = User
+        interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filter_fields = {
             'first_name': ('exact',),
@@ -28,6 +29,7 @@ class UserFilterSetClassType(DjangoObjectType):
 
     class Meta:
         model = User
+        interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filterset_class = UserFilter
 
@@ -39,6 +41,7 @@ class TaskFilterFieldsType(DjangoObjectType):
 
     class Meta:
         model = Task
+        interfaces = (graphene.relay.Node,)
         fields = ('name', 'user')
         filter_fields = {
             'name': ('exact',),
@@ -53,5 +56,6 @@ class TaskFilterSetClassType(DjangoObjectType):
 
     class Meta:
         model = Task
+        interfaces = (graphene.relay.Node,)
         fields = ('name', 'user')
         filterset_class = TaskFilter
