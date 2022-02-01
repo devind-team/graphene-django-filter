@@ -37,22 +37,27 @@ class InputTypeBuildersTest(TestCase):
         )
         self.task_filter_trees_roots = [
             Node(name='name', children=[Node(name='exact', filter_name='name')]),
+            Node(name='description', children=[Node(name='exact', filter_name='description')]),
             Node(
                 name='user', children=[
-                    Node(
-                        name='last_name', children=[
-                            Node(name='exact', filter_name='user__last_name'),
-                        ],
-                    ),
+                    Node(name='exact', filter_name='user'),
                     Node(
                         name='email', children=[
+                            Node(name='exact', filter_name='user__email'),
                             Node(name='iexact', filter_name='user__email__iexact'),
                             Node(name='contains', filter_name='user__email__contains'),
                             Node(name='icontains', filter_name='user__email__icontains'),
                         ],
                     ),
+                    Node(
+                        name='last_name', children=[
+                            Node(name='exact', filter_name='user__last_name'),
+                        ],
+                    ),
                 ],
             ),
+            Node(name='created_at', children=[Node(name='gt', filter_name='created_at__gt')]),
+            Node(name='completed_at', children=[Node(name='lt', filter_name='completed_at__lt')]),
         ]
 
     def test_sequence_to_tree(self) -> None:
@@ -121,7 +126,7 @@ class InputTypeBuildersTest(TestCase):
     def test_create_field_filter_input_type(self) -> None:
         """Test the `create_field_filter_input_type` function."""
         input_object_type = create_field_filter_input_type(
-            self.task_filter_trees_roots[1].children[1],
+            self.task_filter_trees_roots[2].children[1],
             TaskFilter,
             'TaskUser',
         )
@@ -133,7 +138,7 @@ class InputTypeBuildersTest(TestCase):
     def test_create_filter_input_subtype(self) -> None:
         """Test the `create_filter_input_subtype` function."""
         input_object_type = create_filter_input_subtype(
-            self.task_filter_trees_roots[1],
+            self.task_filter_trees_roots[2],
             TaskFilter,
             'Task',
         )
@@ -150,7 +155,10 @@ class InputTypeBuildersTest(TestCase):
         )
         self.assertEqual('TaskFilterInputType', input_object_type.__name__)
         self.assertTrue(hasattr(input_object_type, 'name'))
+        self.assertTrue(hasattr(input_object_type, 'description'))
         self.assertTrue(hasattr(input_object_type, 'user'))
+        self.assertTrue(hasattr(input_object_type, 'created_at'))
+        self.assertTrue(hasattr(input_object_type, 'completed_at'))
 
     def test_get_filtering_args_from_filterset(self) -> None:
         """Test the `get_filtering_args_from_filterset` function."""

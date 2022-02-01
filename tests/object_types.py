@@ -3,8 +3,8 @@
 import graphene
 from graphene_django import DjangoObjectType
 
-from .filter_sets import TaskFilter, UserFilter
-from .models import Task, User
+from .filter_sets import TaskFilter, TaskGroupFilter, UserFilter
+from .models import Task, TaskGroup, User
 
 
 class UserFilterFieldsType(DjangoObjectType):
@@ -15,9 +15,8 @@ class UserFilterFieldsType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filter_fields = {
-            'first_name': ('exact',),
-            'last_name': ('exact',),
-            'sir_name': ('exact',),
+            'first_name': ('exact', 'startswith'),
+            'last_name': ('exact', 'contains'),
             'email': ('exact',),
             'is_active': ('exact',),
             'birthday': ('exact',),
@@ -42,10 +41,12 @@ class TaskFilterFieldsType(DjangoObjectType):
     class Meta:
         model = Task
         interfaces = (graphene.relay.Node,)
-        fields = ('name', 'user')
+        fields = '__all__'
         filter_fields = {
             'name': ('exact',),
-            'user__email': ('iexact', 'contains', 'icontains'),
+            'created_at': ('exact', 'gt'),
+            'completed_at': ('lt',),
+            'user__email': ('exact', 'iexact', 'contains', 'icontains'),
         }
 
 
@@ -59,3 +60,31 @@ class TaskFilterSetClassType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields = ('name', 'user')
         filterset_class = TaskFilter
+
+
+class TaskGroupFilterFieldsType(DjangoObjectType):
+    """TaskGroupType with the `filter_fields` field in the Meta class."""
+
+    tasks = graphene.List(graphene.NonNull(TaskFilterFieldsType), description='Tasks field')
+
+    class Meta:
+        model = TaskGroup
+        interfaces = (graphene.relay.Node,)
+        fields = '__all__'
+        filter_fields = {
+            'name': ('exact', 'contains'),
+            'priority': ('exact', 'gte'),
+            'tasks': ('exact',),
+        }
+
+
+class TaskGroupFilterSetClassType(DjangoObjectType):
+    """TaskGroupType with the `filterset_class` field in the Meta class."""
+
+    tasks = graphene.List(graphene.NonNull(TaskFilterSetClassType), description='Tasks field')
+
+    class Meta:
+        model = TaskGroup
+        interfaces = (graphene.relay.Node,)
+        fields = '__all__'
+        filterset_class = TaskGroupFilter
