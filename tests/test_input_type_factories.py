@@ -1,12 +1,12 @@
-"""Input type builders tests."""
-
+"""Input type factories tests."""
+import graphene
 from anytree import Node
 from anytree.exporter import DictExporter
 from django.test import TestCase
-from graphene_django_filter.input_type_builders import (
-    create_field_filter_input_type,
+from graphene_django_filter.input_type_factories import (
     create_filter_input_subtype,
     create_filter_input_type,
+    create_input_object_type,
     filter_set_to_trees,
     get_filtering_args_from_filterset,
     sequence_to_tree,
@@ -18,7 +18,7 @@ from .object_types import TaskFilterSetClassType
 
 
 class InputTypeBuildersTest(TestCase):
-    """Input type builders tests."""
+    """Input type factories tests."""
 
     def setUp(self) -> None:
         """Set up input type builders tests."""
@@ -123,17 +123,15 @@ class InputTypeBuildersTest(TestCase):
             [exporter.export(root) for root in roots],
         )
 
-    def test_create_field_filter_input_type(self) -> None:
-        """Test the `create_field_filter_input_type` function."""
-        input_object_type = create_field_filter_input_type(
-            self.task_filter_trees_roots[2].children[1],
-            TaskFilter,
-            'TaskUser',
+    def test_create_input_object_type(self) -> None:
+        """Test the `create_input_object_type` function."""
+        input_object_type = create_input_object_type(
+            'CustomInputObjectType',
+            {'field': graphene.String()},
         )
-        self.assertEqual('TaskUserEmailFieldFilterInputType', input_object_type.__name__)
-        self.assertTrue(hasattr(input_object_type, 'iexact'))
-        self.assertTrue(hasattr(input_object_type, 'contains'))
-        self.assertTrue(hasattr(input_object_type, 'icontains'))
+        self.assertEqual('CustomInputObjectType', input_object_type.__name__)
+        self.assertTrue(issubclass(input_object_type, graphene.InputObjectType))
+        self.assertTrue(hasattr(input_object_type, 'field'))
 
     def test_create_filter_input_subtype(self) -> None:
         """Test the `create_filter_input_subtype` function."""
@@ -143,8 +141,14 @@ class InputTypeBuildersTest(TestCase):
             'Task',
         )
         self.assertEqual('TaskUserFilterInputType', input_object_type.__name__)
+        self.assertTrue(hasattr(input_object_type, 'exact'))
         self.assertTrue(hasattr(input_object_type, 'last_name'))
         self.assertTrue(hasattr(input_object_type, 'email'))
+        email_type = getattr(input_object_type, 'email').type
+        self.assertEqual('TaskUserEmailFilterInputType', email_type.__name__)
+        self.assertTrue(hasattr(email_type, 'iexact'))
+        self.assertTrue(hasattr(email_type, 'contains'))
+        self.assertTrue(hasattr(email_type, 'icontains'))
 
     def test_create_filter_input_type(self) -> None:
         """Test the `create_filter_input_type` function."""

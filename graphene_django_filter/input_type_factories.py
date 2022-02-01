@@ -1,13 +1,12 @@
 """Functions for converting a FilterSet class to a tree and then to an input type."""
 
-from typing import Dict, List, Optional, Sequence, Type, cast
+from typing import Any, Dict, List, Optional, Sequence, Type, cast
 
 import graphene
 from anytree import Node
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django_filters import Filter, FilterSet
-from graphene.types.unmountedtype import UnmountedType
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
 from stringcase import camelcase, capitalcase
@@ -70,52 +69,46 @@ def create_filter_input_subtype(
     prefix: str,
 ) -> Type[graphene.InputObjectType]:
     """Create a filter input subtype from a filter set subtree."""
-    if root.height == 1:
-        return create_field_filter_input_type(root, filter_set_class, prefix)
     fields: Dict[str, graphene.InputField] = {}
     for child in root.children:
-        fields[child.name] = graphene.InputField(
-            create_filter_input_subtype(
-                child,
+        if child.height == 0:
+            fields[child.name] = get_field(
                 filter_set_class,
-                prefix + capitalcase(camelcase(root.name)),
-            ),
-            description=f'{child.name} subfield',
-        )
+                child.filter_name,
+                filter_set_class.base_filters[child.filter_name],
+            )
+        else:
+            fields[child.name] = graphene.InputField(
+                create_filter_input_subtype(
+                    child,
+                    filter_set_class,
+                    prefix + capitalcase(camelcase(root.name)),
+                ),
+                description=f'{child.name} subfield',
+            )
+    return create_input_object_type(
+        f'{prefix}{capitalcase(camelcase(root.name))}FilterInputType',
+        fields,
+    )
+
+
+def create_input_object_type(name: str, fields: Dict[str, Any]) -> Type[graphene.InputObjectType]:
+    """Create an inheritor for the `InputObjectType` class."""
     return cast(
         Type[graphene.InputObjectType],
         type(
-            f'{prefix}{capitalcase(camelcase(root.name))}FilterInputType',
+            name,
             (graphene.InputObjectType,),
             fields,
         ),
     )
 
 
-def create_field_filter_input_type(
-    root: Node,
+def get_field(
     filter_set_class: Type[FilterSet],
-    prefix: str,
-) -> Type[graphene.InputObjectType]:
-    """Create a field filter input type from filter set tree leaves."""
-    fields: Dict[str, UnmountedType] = {}
-    for lookup_node in root.children:
-        fields[lookup_node.name] = get_field(
-            filter_set_class,
-            lookup_node.filter_name,
-            filter_set_class.base_filters[lookup_node.filter_name],
-        )
-    return cast(
-        Type[graphene.InputObjectType],
-        type(
-            f'{prefix}{capitalcase(camelcase(root.name))}FieldFilterInputType',
-            (graphene.InputObjectType,),
-            fields,
-        ),
-    )
-
-
-def get_field(filter_set_class: Type[FilterSet], name: str, filter_field: Filter) -> UnmountedType:
+    name: str,
+    filter_field: Filter,
+) -> graphene.InputField:
     """Return Graphene input field from a filter field.
 
     It is a partial copy of the `get_filtering_args_from_filterset` function from graphene-django.

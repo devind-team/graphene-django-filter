@@ -1,6 +1,6 @@
 """AdvancedDjangoFilterConnectionField module.
 
-Use DjangoFilterConnectionField class from this
+Use AdvancedDjangoFilterConnectionField class from this
 module instead of DjangoFilterConnectionField from graphene-django.
 """
 
@@ -11,7 +11,7 @@ from django.db import models
 from django_filters import FilterSet
 from graphene_django.filter import DjangoFilterConnectionField
 
-from .input_type_builders import get_filtering_args_from_filterset
+from .input_type_factories import get_filtering_args_from_filterset
 
 
 class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
