@@ -1,21 +1,45 @@
-"""AdvancedDjangoFilterConnectionField module.
+"""`AdvancedDjangoFilterConnectionField` class module.
 
-Use AdvancedDjangoFilterConnectionField class from this
-module instead of DjangoFilterConnectionField from graphene-django.
+Use the `AdvancedDjangoFilterConnectionField` class from this
+module instead of the `DjangoFilterConnectionField` from graphene-django.
 """
 
-from typing import Any, Dict, Iterable, Type
+from typing import Any, Dict, Iterable, Optional, Type
 
 import graphene
 from django.db import models
 from django_filters import FilterSet
+from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
+from .filter_set import AdvancedFilterSet
 from .input_type_factories import get_filtering_args_from_filterset
 
 
 class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
     """Allow you to use advanced filters provided by this library."""
+
+    def __init__(
+        self,
+        type: Type[DjangoObjectType],
+        fields: Optional[Dict[str, list]] = None,
+        order_by: Any = None,
+        extra_filter_meta: Optional[dict] = None,
+        filterset_class: Optional[Type[AdvancedFilterSet]] = None,
+        *args,
+        **kwargs
+    ) -> None:
+        assert filterset_class is None or issubclass(filterset_class, AdvancedFilterSet), \
+            'Use the `AdvancedFilterSet` class with the `AdvancedDjangoFilterConnectionField`'
+        super().__init__(
+            type,
+            fields,
+            order_by,
+            extra_filter_meta,
+            filterset_class,
+            *args,
+            **kwargs
+        )
 
     @property
     def filtering_args(self) -> dict:

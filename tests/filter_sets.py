@@ -1,11 +1,12 @@
 """FilterSet classes."""
 
 import django_filters
+from graphene_django_filter import AdvancedFilterSet
 
 from .models import Task, TaskGroup, User
 
 
-class UserFilter(django_filters.FilterSet):
+class UserFilter(AdvancedFilterSet):
     """User FilterSet class for testing."""
 
     first_name__startswith = django_filters.CharFilter(
@@ -29,7 +30,7 @@ class UserFilter(django_filters.FilterSet):
         )
 
 
-class TaskFilter(django_filters.FilterSet):
+class TaskFilter(AdvancedFilterSet):
     """Task FilterSet class for testing."""
 
     created_at__gt = django_filters.DateFilter(
@@ -64,7 +65,7 @@ class TaskFilter(django_filters.FilterSet):
         )
 
 
-class TaskGroupFilter(django_filters.FilterSet):
+class TaskGroupFilter(AdvancedFilterSet):
     """TaskGroup FilterSet class for testing."""
 
     name__contains = django_filters.CharFilter(

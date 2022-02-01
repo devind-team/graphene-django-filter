@@ -1,4 +1,5 @@
 """GraphQL schema."""
+
 import graphene
 from graphene_django_filter import AdvancedDjangoFilterConnectionField
 

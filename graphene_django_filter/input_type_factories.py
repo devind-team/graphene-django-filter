@@ -6,14 +6,16 @@ import graphene
 from anytree import Node
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
-from django_filters import Filter, FilterSet
+from django_filters import Filter
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
 from stringcase import camelcase, capitalcase
 
+from .filter_set import AdvancedFilterSet
+
 
 def get_filtering_args_from_filterset(
-    filter_set_class: Type[FilterSet],
+    filter_set_class: Type[AdvancedFilterSet],
     node_type: Type[graphene.ObjectType],
 ) -> Dict[str, graphene.InputField]:
     """Inspect a FilterSet and produce the arguments to pass to a Graphene Field.
@@ -33,7 +35,7 @@ def get_filtering_args_from_filterset(
 
 def create_filter_input_type(
     roots: List[Node],
-    filter_set_class: Type[FilterSet],
+    filter_set_class: Type[AdvancedFilterSet],
     type_name: str,
 ) -> Type[graphene.InputObjectType]:
     """Create a filter input type from filter set trees."""
@@ -65,7 +67,7 @@ def create_filter_input_type(
 
 def create_filter_input_subtype(
     root: Node,
-    filter_set_class: Type[FilterSet],
+    filter_set_class: Type[AdvancedFilterSet],
     prefix: str,
 ) -> Type[graphene.InputObjectType]:
     """Create a filter input subtype from a filter set subtree."""
@@ -105,7 +107,7 @@ def create_input_object_type(name: str, fields: Dict[str, Any]) -> Type[graphene
 
 
 def get_field(
-    filter_set_class: Type[FilterSet],
+    filter_set_class: Type[AdvancedFilterSet],
     name: str,
     filter_field: Filter,
 ) -> graphene.InputField:
@@ -136,7 +138,7 @@ def get_field(
     return field_type
 
 
-def filter_set_to_trees(filter_set_class: Type[FilterSet]) -> List[Node]:
+def filter_set_to_trees(filter_set_class: Type[AdvancedFilterSet]) -> List[Node]:
     """Convert a FilterSet class to trees."""
     trees: List[Node] = []
     for filter_name, filter_value in filter_set_class.base_filters.items():

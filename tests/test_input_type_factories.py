@@ -1,4 +1,5 @@
 """Input type factories tests."""
+
 import graphene
 from anytree import Node
 from anytree.exporter import DictExporter
