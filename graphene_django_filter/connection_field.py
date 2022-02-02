@@ -13,6 +13,7 @@ from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
 from .filter_set import AdvancedFilterSet
+from .filter_set_factories import get_filter_set_class
 from .input_type_factories import get_filtering_args_from_filterset
 
 
@@ -40,6 +41,20 @@ class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
             *args,
             **kwargs
         )
+
+    @property
+    def filterset_class(self) -> Type[AdvancedFilterSet]:
+        """Return a AdvancedFilterSet instead of a FilterSet."""
+        if not self._filterset_class:
+            fields = self._fields or self.node_type._meta.filter_fields
+            meta = {'model': self.model, 'fields': fields}
+            if self._extra_filter_meta:
+                meta.update(self._extra_filter_meta)
+            filterset_class = self._provided_filterset_class or (
+                self.node_type._meta.filterset_class
+            )
+            self._filterset_class = get_filter_set_class(filterset_class, **meta)
+        return self._filterset_class
 
     @property
     def filtering_args(self) -> dict:
