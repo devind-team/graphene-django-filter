@@ -1,4 +1,4 @@
-"""`AdvancedDjangoFilterConnectionField` class tests."""
+"""`connection_field` module tests."""
 
 from django.test import TestCase
 from django_filters import FilterSet
