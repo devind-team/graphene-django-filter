@@ -37,28 +37,28 @@ class InputTypeBuildersTest(TestCase):
             ),
         )
         self.task_filter_trees_roots = [
-            Node(name='name', children=[Node(name='exact', filter_name='name')]),
-            Node(name='description', children=[Node(name='exact', filter_name='description')]),
+            Node(name='name', children=[Node(name='exact')]),
+            Node(name='description', children=[Node(name='exact')]),
             Node(
                 name='user', children=[
-                    Node(name='exact', filter_name='user'),
+                    Node(name='exact'),
                     Node(
                         name='email', children=[
-                            Node(name='exact', filter_name='user__email'),
-                            Node(name='iexact', filter_name='user__email__iexact'),
-                            Node(name='contains', filter_name='user__email__contains'),
-                            Node(name='icontains', filter_name='user__email__icontains'),
+                            Node(name='exact'),
+                            Node(name='iexact'),
+                            Node(name='contains'),
+                            Node(name='icontains'),
                         ],
                     ),
                     Node(
                         name='last_name', children=[
-                            Node(name='exact', filter_name='user__last_name'),
+                            Node(name='exact'),
                         ],
                     ),
                 ],
             ),
-            Node(name='created_at', children=[Node(name='gt', filter_name='created_at__gt')]),
-            Node(name='completed_at', children=[Node(name='lt', filter_name='completed_at__lt')]),
+            Node(name='created_at', children=[Node(name='gt')]),
+            Node(name='completed_at', children=[Node(name='lt')]),
         ]
 
     def test_sequence_to_tree(self) -> None:
@@ -68,22 +68,12 @@ class InputTypeBuildersTest(TestCase):
                 'name': 'field1',
                 'children': [{'name': 'field2'}],
             },
-            DictExporter().export(
-                sequence_to_tree(
-                    ({'name': 'field1'}, {'name': 'field2'}),
-                ),
-            ),
+            DictExporter().export(sequence_to_tree(('field1', 'field2'))),
         )
 
     def test_possible_try_add_sequence(self) -> None:
         """Test the `try_add_sequence` function when adding a sequence is possible."""
-        is_mutated = try_add_sequence(
-            self.abstract_tree_root, (
-                {'name': 'field1'},
-                {'name': 'field5'},
-                {'name': 'field6'},
-            ),
-        )
+        is_mutated = try_add_sequence(self.abstract_tree_root, ('field1', 'field5', 'field6'))
         self.assertTrue(is_mutated)
         self.assertEqual(
             {
@@ -109,10 +99,7 @@ class InputTypeBuildersTest(TestCase):
 
     def test_impossible_try_add_sequence(self) -> None:
         """Test the `try_add_sequence` function when adding a sequence is impossible."""
-        is_mutated = try_add_sequence(
-            self.abstract_tree_root,
-            ({'name': 'field5'}, {'name': 'field6'}),
-        )
+        is_mutated = try_add_sequence(self.abstract_tree_root, ('field5', 'field6'))
         self.assertFalse(is_mutated)
 
     def test_filter_set_to_trees(self) -> None:

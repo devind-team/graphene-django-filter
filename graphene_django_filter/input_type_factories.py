@@ -7,6 +7,7 @@ from anytree import Node
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django_filters import Filter
+from django_filters.conf import settings
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
 from stringcase import camelcase, capitalcase
@@ -74,10 +75,13 @@ def create_filter_input_subtype(
     fields: Dict[str, graphene.InputField] = {}
     for child in root.children:
         if child.height == 0:
+            filter_name = f'{LOOKUP_SEP}'.join(
+                node.name for node in child.path if node.name != settings.DEFAULT_LOOKUP_EXPR
+            )
             fields[child.name] = get_field(
                 filter_set_class,
-                child.filter_name,
-                filter_set_class.base_filters[child.filter_name],
+                filter_name,
+                filter_set_class.base_filters[filter_name],
             )
         else:
             fields[child.name] = graphene.InputField(
@@ -141,23 +145,19 @@ def get_field(
 def filter_set_to_trees(filter_set_class: Type[AdvancedFilterSet]) -> List[Node]:
     """Convert a FilterSet class to trees."""
     trees: List[Node] = []
-    for filter_name, filter_value in filter_set_class.base_filters.items():
-        values = [
-            {'name': name}
-            for name in (*filter_value.field_name.split(LOOKUP_SEP), filter_value.lookup_expr)
-        ]
-        values[-1]['filter_name'] = filter_name
+    for filter_value in filter_set_class.base_filters.values():
+        values = (*filter_value.field_name.split(LOOKUP_SEP), filter_value.lookup_expr)
         if len(trees) == 0 or not any([try_add_sequence(tree, values) for tree in trees]):
             trees.append(sequence_to_tree(values))
     return trees
 
 
-def try_add_sequence(root: Node, values: Sequence[dict]) -> bool:
+def try_add_sequence(root: Node, values: Sequence[str]) -> bool:
     """Try to add a sequence to a tree.
 
     Return a flag indicating whether the mutation was made.
     """
-    if root.name == values[0]['name']:
+    if root.name == values[0]:
         for child in root.children:
             is_mutated = try_add_sequence(child, values[1:])
             if is_mutated:
@@ -168,9 +168,9 @@ def try_add_sequence(root: Node, values: Sequence[dict]) -> bool:
         return False
 
 
-def sequence_to_tree(values: Sequence[dict]) -> Node:
+def sequence_to_tree(values: Sequence[str]) -> Node:
     """Convert a sequence to a tree."""
     node: Optional[Node] = None
     for value in values:
-        node = Node(**value, parent=node)
+        node = Node(name=value, parent=node)
     return node.root
