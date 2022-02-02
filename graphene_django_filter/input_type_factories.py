@@ -40,11 +40,6 @@ def create_filter_input_type(
     type_name: str,
 ) -> Type[graphene.InputObjectType]:
     """Create a filter input type from filter set trees."""
-    input_type: Optional[Type[graphene.InputObjectType]] = None
-
-    def get_input_type() -> Optional[Type[graphene.InputObjectType]]:
-        return input_type
-
     input_type = cast(
         Type[graphene.InputObjectType],
         type(
@@ -58,8 +53,8 @@ def create_filter_input_type(
                     )
                     for root in roots
                 },
-                'or': graphene.InputField(get_input_type, description='Or field'),
-                'and': graphene.InputField(get_input_type, description='And field'),
+                'or': graphene.InputField(lambda: input_type, description='Or field'),
+                'and': graphene.InputField(lambda: input_type, description='And field'),
             },
         ),
     )
