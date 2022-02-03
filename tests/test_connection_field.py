@@ -9,10 +9,10 @@ from .object_types import TaskFilterSetClassType
 
 
 class AdvancedDjangoFilterConnectionFieldTest(TestCase):
-    """AdvancedDjangoFilterConnectionField tests."""
+    """`AdvancedDjangoFilterConnectionField` class tests."""
 
     def test_init(self) -> None:
-        """Test `__init__` method."""
+        """Test the `__init__` method."""
         AdvancedDjangoFilterConnectionField(TaskFilterSetClassType)
         AdvancedDjangoFilterConnectionField(TaskFilterSetClassType, filterset_class=TaskFilter)
         self.assertRaisesMessage(

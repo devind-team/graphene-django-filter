@@ -1,14 +1,17 @@
 """`filter_set` module tests."""
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import graphene
 from django.db.models.constants import LOOKUP_SEP
 from django.test import TestCase
 from graphene_django_filter.filter_set import tree_input_type_to_data
 
+from .filter_sets import TaskFilter
 
-class TestTreeArgsToData(TestCase):
+
+class TreeArgsToDataTest(TestCase):
     """`tree_input_type_to_data` function tests."""
 
     class TaskNameFilterInputType(graphene.InputObjectType):
@@ -28,8 +31,8 @@ class TestTreeArgsToData(TestCase):
 
     class TaskUserFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
-        email = graphene.InputField(lambda: TestTreeArgsToData.TaskUserEmailFilterInputType)
-        last_name = graphene.InputField(lambda: TestTreeArgsToData.TaskUserLastNameFilterInputType)
+        email = graphene.InputField(lambda: TreeArgsToDataTest.TaskUserEmailFilterInputType)
+        last_name = graphene.InputField(lambda: TreeArgsToDataTest.TaskUserLastNameFilterInputType)
 
     class TaskCreatedAtInputType(graphene.InputObjectType):
         gt = graphene.DateTime()
@@ -42,25 +45,25 @@ class TestTreeArgsToData(TestCase):
         (graphene.InputObjectType,),
         {
             'name': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskNameFilterInputType,
+                lambda: TreeArgsToDataTest.TaskNameFilterInputType,
             ),
             'description': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskDescriptionFilterInputType,
+                lambda: TreeArgsToDataTest.TaskDescriptionFilterInputType,
             ),
             'user': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskUserFilterInputType,
+                lambda: TreeArgsToDataTest.TaskUserFilterInputType,
             ),
             'created_at': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskCreatedAtInputType,
+                lambda: TreeArgsToDataTest.TaskCreatedAtInputType,
             ),
             'completed_at': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskCompletedAtInputType,
+                lambda: TreeArgsToDataTest.TaskCompletedAtInputType,
             ),
             'or': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskFilterInputType,
+                lambda: TreeArgsToDataTest.TaskFilterInputType,
             ),
             'and': graphene.InputField(
-                lambda: TestTreeArgsToData.TaskFilterInputType,
+                lambda: TreeArgsToDataTest.TaskFilterInputType,
             ),
         },
     )
@@ -106,3 +109,35 @@ class TestTreeArgsToData(TestCase):
             },
             data,
         )
+
+
+class AdvancedFilterSetTest(TestCase):
+    """`AdvancedFilterSetTest` class tests."""
+
+    def test_get_form_class(self) -> None:
+        """Test getting a tree form class with the `get_form_class` method."""
+        form_class = TaskFilter().get_form_class()
+        self.assertEqual('TaskFilterTreeForm', form_class.__name__)
+        form = form_class(or_form=form_class())
+        self.assertIsInstance(form.or_form, form_class)
+        self.assertIsNone(form.and_form)
+
+    def test_tree_form_errors(self) -> None:
+        """Test getting a tree form class errors."""
+        form_class = TaskFilter().get_form_class()
+        form = form_class(or_form=form_class())
+        with patch.object(
+            form, 'cleaned_data', new={'name': 'parent_name_data'}, create=True,
+        ), patch.object(
+            form.or_form, 'cleaned_data', new={'name': 'child_name_data'}, create=True,
+        ):
+            form.add_error('name', 'parent_form_error')
+            form.or_form.add_error('name', 'child_form_error')
+            self.assertEqual(
+                {
+                    'name': ['parent_form_error'],
+                    'or': {
+                        'name': ['child_form_error'],
+                    },
+                }, form.errors,
+            )
