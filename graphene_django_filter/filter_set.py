@@ -8,6 +8,8 @@ from typing import Any, Dict, Optional, Type, Union, cast
 from django.db.models.constants import LOOKUP_SEP
 from django.forms import Form
 from django.forms.utils import ErrorDict
+from django_filters import Filter
+from django_filters.conf import settings
 from django_filters.filterset import BaseFilterSet, FilterSetMetaclass
 from graphene.types.inputobjecttype import InputObjectTypeContainer
 
@@ -73,3 +75,18 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
 
         )
         return tree_form
+
+    def find_filter(self, data_key: str) -> Filter:
+        """Find a filter using a data key.
+
+        The data key may differ from a filter name, because
+        the data keys may contain DEFAULT_LOOKUP_EXPR and user can create a AdvancedFilterSet class
+        without following the naming convention.
+        """
+        field_name, lookup_expr = data_key.rsplit(LOOKUP_SEP, 1)
+        key = field_name if lookup_expr == settings.DEFAULT_LOOKUP_EXPR else data_key
+        if key in self.filters:
+            return self.filters[key]
+        for filter_value in self.filters.values():
+            if filter_value.field_name == field_name and filter_value.lookup_expr == lookup_expr:
+                return filter_value

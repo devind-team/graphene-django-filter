@@ -3,12 +3,14 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import django_filters
 import graphene
 from django.db.models.constants import LOOKUP_SEP
 from django.test import TestCase
-from graphene_django_filter.filter_set import tree_input_type_to_data
+from graphene_django_filter.filter_set import AdvancedFilterSet, tree_input_type_to_data
 
 from .filter_sets import TaskFilter
+from .models import User
 
 
 class TreeArgsToDataTest(TestCase):
@@ -114,6 +116,16 @@ class TreeArgsToDataTest(TestCase):
 class AdvancedFilterSetTest(TestCase):
     """`AdvancedFilterSetTest` class tests."""
 
+    class FindFilterFilterSet(AdvancedFilterSet):
+        in_last_name = django_filters.CharFilter(field_name='last_name', lookup_expr='contains')
+
+        class Meta:
+            model = User
+            fields = {
+                'email': ('exact',),
+                'first_name': ('iexact',),
+            }
+
     def test_get_form_class(self) -> None:
         """Test getting a tree form class with the `get_form_class` method."""
         form_class = TaskFilter().get_form_class()
@@ -141,3 +153,16 @@ class AdvancedFilterSetTest(TestCase):
                     },
                 }, form.errors,
             )
+
+    def test_find_filter(self) -> None:
+        """Test the `find_filter` method."""
+        filter_set = AdvancedFilterSetTest.FindFilterFilterSet()
+        email_filter = filter_set.find_filter(f'email{LOOKUP_SEP}exact')
+        self.assertEqual(email_filter.field_name, 'email')
+        self.assertEqual(email_filter.lookup_expr, 'exact')
+        first_name_filter = filter_set.find_filter(f'first_name{LOOKUP_SEP}iexact')
+        self.assertEqual(first_name_filter.field_name, 'first_name')
+        self.assertEqual(first_name_filter.lookup_expr, 'iexact')
+        last_name_filter = filter_set.find_filter(f'last_name{LOOKUP_SEP}contains')
+        self.assertEqual(last_name_filter.field_name, 'last_name')
+        self.assertEqual(last_name_filter.lookup_expr, 'contains')
