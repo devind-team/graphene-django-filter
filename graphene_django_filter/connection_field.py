@@ -12,8 +12,8 @@ from django_filters import FilterSet
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
-from .filter_set import AdvancedFilterSet
-from .filter_set_factories import get_filter_set_class
+from .filterset import AdvancedFilterSet
+from .filterset_factories import get_filterset_class
 from .input_type_factories import get_filtering_args_from_filterset
 
 
@@ -53,7 +53,7 @@ class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
             filterset_class = self._provided_filterset_class or (
                 self.node_type._meta.filterset_class
             )
-            self._filterset_class = get_filter_set_class(filterset_class, **meta)
+            self._filterset_class = get_filterset_class(filterset_class, **meta)
         return self._filterset_class
 
     @property

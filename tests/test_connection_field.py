@@ -4,7 +4,7 @@ from django.test import TestCase
 from django_filters import FilterSet
 from graphene_django_filter import AdvancedDjangoFilterConnectionField
 
-from .filter_sets import TaskFilter
+from .filtersets import TaskFilter
 from .object_types import TaskFilterSetClassType
 
 

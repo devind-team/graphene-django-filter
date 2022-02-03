@@ -12,11 +12,11 @@ from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
 from stringcase import camelcase, capitalcase
 
-from .filter_set import AdvancedFilterSet
+from .filterset import AdvancedFilterSet
 
 
 def get_filtering_args_from_filterset(
-    filter_set_class: Type[AdvancedFilterSet],
+    filterset_class: Type[AdvancedFilterSet],
     node_type: Type[graphene.ObjectType],
 ) -> Dict[str, graphene.InputField]:
     """Inspect a FilterSet and produce the arguments to pass to a Graphene Field.
@@ -26,8 +26,8 @@ def get_filtering_args_from_filterset(
     return {
         'filter': graphene.InputField(
             create_filter_input_type(
-                filter_set_to_trees(filter_set_class),
-                filter_set_class,
+                filterset_to_trees(filterset_class),
+                filterset_class,
                 node_type.__name__.replace('Type', ''),
             ), description='Advanced filter field',
         ),
@@ -36,7 +36,7 @@ def get_filtering_args_from_filterset(
 
 def create_filter_input_type(
     roots: List[Node],
-    filter_set_class: Type[AdvancedFilterSet],
+    filterset_class: Type[AdvancedFilterSet],
     type_name: str,
 ) -> Type[graphene.InputObjectType]:
     """Create a filter input type from filter set trees."""
@@ -48,7 +48,7 @@ def create_filter_input_type(
             {
                 **{
                     root.name: graphene.InputField(
-                        create_filter_input_subtype(root, filter_set_class, type_name),
+                        create_filter_input_subtype(root, filterset_class, type_name),
                         description=f'{root.name} subfield',
                     )
                     for root in roots
@@ -63,7 +63,7 @@ def create_filter_input_type(
 
 def create_filter_input_subtype(
     root: Node,
-    filter_set_class: Type[AdvancedFilterSet],
+    filterset_class: Type[AdvancedFilterSet],
     prefix: str,
 ) -> Type[graphene.InputObjectType]:
     """Create a filter input subtype from a filter set subtree."""
@@ -74,15 +74,15 @@ def create_filter_input_subtype(
                 node.name for node in child.path if node.name != settings.DEFAULT_LOOKUP_EXPR
             )
             fields[child.name] = get_field(
-                filter_set_class,
+                filterset_class,
                 filter_name,
-                filter_set_class.base_filters[filter_name],
+                filterset_class.base_filters[filter_name],
             )
         else:
             fields[child.name] = graphene.InputField(
                 create_filter_input_subtype(
                     child,
-                    filter_set_class,
+                    filterset_class,
                     prefix + capitalcase(camelcase(root.name)),
                 ),
                 description=f'{child.name} subfield',
@@ -106,7 +106,7 @@ def create_input_object_type(name: str, fields: Dict[str, Any]) -> Type[graphene
 
 
 def get_field(
-    filter_set_class: Type[AdvancedFilterSet],
+    filterset_class: Type[AdvancedFilterSet],
     name: str,
     filter_field: Filter,
 ) -> graphene.InputField:
@@ -115,10 +115,10 @@ def get_field(
     It is a partial copy of the `get_filtering_args_from_filterset` function from graphene-django.
     https://github.com/graphql-python/graphene-django/blob/caf954861025b9f3d9d3f9c204a7cbbc87352265/graphene_django/filter/utils.py#L11
     """
-    model = filter_set_class._meta.model
+    model = filterset_class._meta.model
     form_field: Optional[models.Field] = None
     filter_type: str = filter_field.lookup_expr
-    if name in getattr(filter_set_class, 'declared_filters'):
+    if name in getattr(filterset_class, 'declared_filters'):
         form_field = filter_field.field
         field = convert_form_field(form_field)
     else:
@@ -137,10 +137,10 @@ def get_field(
     return field_type
 
 
-def filter_set_to_trees(filter_set_class: Type[AdvancedFilterSet]) -> List[Node]:
+def filterset_to_trees(filterset_class: Type[AdvancedFilterSet]) -> List[Node]:
     """Convert a FilterSet class to trees."""
     trees: List[Node] = []
-    for filter_value in filter_set_class.base_filters.values():
+    for filter_value in filterset_class.base_filters.values():
         values = (*filter_value.field_name.split(LOOKUP_SEP), filter_value.lookup_expr)
         if len(trees) == 0 or not any([try_add_sequence(tree, values) for tree in trees]):
             trees.append(sequence_to_tree(values))

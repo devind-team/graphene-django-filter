@@ -8,13 +8,13 @@ from graphene_django_filter.input_type_factories import (
     create_filter_input_subtype,
     create_filter_input_type,
     create_input_object_type,
-    filter_set_to_trees,
+    filterset_to_trees,
     get_filtering_args_from_filterset,
     sequence_to_tree,
     try_add_sequence,
 )
 
-from .filter_sets import TaskFilter
+from .filtersets import TaskFilter
 from .object_types import TaskFilterSetClassType
 
 
@@ -102,9 +102,9 @@ class InputTypeBuildersTest(TestCase):
         is_mutated = try_add_sequence(self.abstract_tree_root, ('field5', 'field6'))
         self.assertFalse(is_mutated)
 
-    def test_filter_set_to_trees(self) -> None:
-        """Test the `filter_set_to_trees` function."""
-        roots = filter_set_to_trees(TaskFilter)
+    def test_filterset_to_trees(self) -> None:
+        """Test the `filterset_to_trees` function."""
+        roots = filterset_to_trees(TaskFilter)
         exporter = DictExporter()
         self.assertEqual(
             [exporter.export(root) for root in self.task_filter_trees_roots],

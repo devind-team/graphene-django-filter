@@ -20,7 +20,7 @@ class Query(graphene.ObjectType):
         UserFilterFieldsType,
         description='Advanced filter fields with the `UserFilterFieldsType` type',
     )
-    user_filter_set = AdvancedDjangoFilterConnectionField(
+    user_filterset = AdvancedDjangoFilterConnectionField(
         UserFilterSetClassType,
         description='Advanced filter fields with the `UserFilterSetClassType` type',
     )
@@ -28,7 +28,7 @@ class Query(graphene.ObjectType):
         TaskFilterFieldsType,
         description='Advanced filter field with the `TaskFilterFieldsType` type',
     )
-    task_filter_set = AdvancedDjangoFilterConnectionField(
+    task_filterset = AdvancedDjangoFilterConnectionField(
         TaskFilterSetClassType,
         description='Advanced filter field with the `TaskFilterSetClassType` type',
     )
@@ -36,7 +36,7 @@ class Query(graphene.ObjectType):
         TaskGroupFilterFieldsType,
         description='Advanced filter field with the `TaskGroupFilterFieldsType` type',
     )
-    task_group_filter_set = AdvancedDjangoFilterConnectionField(
+    task_group_filterset = AdvancedDjangoFilterConnectionField(
         TaskGroupFilterSetClassType,
         description='Advanced filter field with the `TaskGroupFilterSetClassType` type',
     )

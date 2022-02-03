@@ -1,4 +1,4 @@
-"""`filter_set` module tests."""
+"""`filterset` module tests."""
 
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -7,9 +7,9 @@ import django_filters
 import graphene
 from django.db.models.constants import LOOKUP_SEP
 from django.test import TestCase
-from graphene_django_filter.filter_set import AdvancedFilterSet, tree_input_type_to_data
+from graphene_django_filter.filterset import AdvancedFilterSet, tree_input_type_to_data
 
-from .filter_sets import TaskFilter
+from .filtersets import TaskFilter
 from .models import User
 
 
@@ -156,13 +156,13 @@ class AdvancedFilterSetTest(TestCase):
 
     def test_find_filter(self) -> None:
         """Test the `find_filter` method."""
-        filter_set = AdvancedFilterSetTest.FindFilterFilterSet()
-        email_filter = filter_set.find_filter(f'email{LOOKUP_SEP}exact')
+        filterset = AdvancedFilterSetTest.FindFilterFilterSet()
+        email_filter = filterset.find_filter(f'email{LOOKUP_SEP}exact')
         self.assertEqual(email_filter.field_name, 'email')
         self.assertEqual(email_filter.lookup_expr, 'exact')
-        first_name_filter = filter_set.find_filter(f'first_name{LOOKUP_SEP}iexact')
+        first_name_filter = filterset.find_filter(f'first_name{LOOKUP_SEP}iexact')
         self.assertEqual(first_name_filter.field_name, 'first_name')
         self.assertEqual(first_name_filter.lookup_expr, 'iexact')
-        last_name_filter = filter_set.find_filter(f'last_name{LOOKUP_SEP}contains')
+        last_name_filter = filterset.find_filter(f'last_name{LOOKUP_SEP}contains')
         self.assertEqual(last_name_filter.field_name, 'last_name')
         self.assertEqual(last_name_filter.lookup_expr, 'contains')

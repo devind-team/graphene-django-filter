@@ -3,7 +3,7 @@
 import graphene
 from graphene_django import DjangoObjectType
 
-from .filter_sets import TaskFilter, TaskGroupFilter, UserFilter
+from .filtersets import TaskFilter, TaskGroupFilter, UserFilter
 from .models import Task, TaskGroup, User
 
 
