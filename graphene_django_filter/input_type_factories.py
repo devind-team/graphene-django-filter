@@ -53,8 +53,8 @@ def create_filter_input_type(
                     )
                     for root in roots
                 },
-                'or': graphene.InputField(lambda: input_type, description='Or field'),
                 'and': graphene.InputField(lambda: input_type, description='And field'),
+                'or': graphene.InputField(lambda: input_type, description='Or field'),
             },
         ),
     )

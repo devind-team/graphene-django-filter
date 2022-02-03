@@ -13,6 +13,7 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.auth',
     'django_filters',
+    'django_seed',
     'tests',
 )
 
