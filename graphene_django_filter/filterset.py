@@ -5,6 +5,7 @@ Use the `AdvancedFilterSet` class from this module instead of the `FilterSet` fr
 
 from typing import Any, Dict, Optional, Type, Union, cast
 
+from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django.forms import Form
 from django.forms.utils import ErrorDict
@@ -116,3 +117,22 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         for filter_value in self.filters.values():
             if filter_value.field_name == field_name and filter_value.lookup_expr == lookup_expr:
                 return filter_value
+
+    def filter_queryset(self, queryset: models.QuerySet) -> models.QuerySet:
+        """Filter a queryset with a top level form's `cleaned_data`."""
+        return self.filter_queryset_with_form(queryset, self.form)
+
+    def filter_queryset_with_form(
+        self,
+        queryset: models.QuerySet,
+        form: Union[Form, TreeFormMixin],
+    ) -> models.QuerySet:
+        """Filter a query set with a form's `cleaned_data`."""
+        qs = queryset
+        for name, value in form.cleaned_data.items():
+            qs = self.find_filter(name).filter(qs, value)
+        if form.and_form:
+            qs = qs & self.filter_queryset_with_form(queryset, form.and_form)
+        if form.or_form:
+            qs = qs | self.filter_queryset_with_form(queryset, form.or_form)
+        return qs

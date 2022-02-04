@@ -53,15 +53,11 @@ def generate_tasks(seeder: Seeder) -> None:
     )
     number_generator = iter(count())
     seeder.add_entity(
-        Task, 20, {
+        Task, 45, {
             'name': lambda ie: f'Important task №{next(number_generator)}',
+            'description': 'This task in very important',
             'created_at': make_aware(datetime.strptime('01/01/2021', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2021', '%m/%d/%Y')),
-        },
-    )
-    seeder.add_entity(
-        Task, 25, {
-            'description': 'This task in very important',
         },
     )
 

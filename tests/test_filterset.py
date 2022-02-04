@@ -10,6 +10,7 @@ from django.test import TestCase
 from django.utils.timezone import make_aware
 from graphene_django_filter.filterset import AdvancedFilterSet, tree_input_type_to_data
 
+from .data_generation import generate_data
 from .filtersets import TaskFilter
 from .models import User
 
@@ -200,3 +201,11 @@ class AdvancedFilterSetTest(TestCase):
         self.assertIsNone(task_filter.form.or_form.and_form)
         self.assertIsNone(task_filter.form.and_form.or_form)
         self.assertIsNone(task_filter.form.and_form.and_form)
+
+    def test_filter_queryset(self) -> None:
+        """Test the `filter_queryset` method."""
+        generate_data()
+        task_filter = TaskFilter(data=self.task_filter_data)
+        getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
+        tasks = task_filter.filter_queryset(task_filter.queryset.all())
+        self.assertEqual(60, tasks.count())
