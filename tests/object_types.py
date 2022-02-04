@@ -15,9 +15,9 @@ class UserFilterFieldsType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filter_fields = {
+            'email': ('exact',),
             'first_name': ('exact', 'startswith'),
             'last_name': ('exact', 'contains'),
-            'email': ('exact',),
             'is_active': ('exact',),
             'birthday': ('exact',),
         }
@@ -43,10 +43,13 @@ class TaskFilterFieldsType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filter_fields = {
-            'name': ('exact',),
-            'created_at': ('exact', 'gt'),
+            'name': ('exact', 'contains'),
+            'created_at': ('gt',),
             'completed_at': ('lt',),
+            'description': ('exact', 'contains'),
+            'user': ('exact',),
             'user__email': ('exact', 'iexact', 'contains', 'icontains'),
+            'user__last_name': ('exact', 'contains'),
         }
 
 
@@ -73,7 +76,7 @@ class TaskGroupFilterFieldsType(DjangoObjectType):
         fields = '__all__'
         filter_fields = {
             'name': ('exact', 'contains'),
-            'priority': ('exact', 'gte'),
+            'priority': ('exact', 'gte', 'lte'),
             'tasks': ('exact',),
         }
 

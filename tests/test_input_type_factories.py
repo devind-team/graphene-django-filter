@@ -37,8 +37,10 @@ class InputTypeBuildersTest(TestCase):
             ),
         )
         self.task_filter_trees_roots = [
-            Node(name='name', children=[Node(name='exact')]),
-            Node(name='description', children=[Node(name='exact')]),
+            Node(name='name', children=[Node(name='exact'), Node(name='contains')]),
+            Node(name='created_at', children=[Node(name='gt')]),
+            Node(name='completed_at', children=[Node(name='lt')]),
+            Node(name='description', children=[Node(name='exact'), Node(name='contains')]),
             Node(
                 name='user', children=[
                     Node(name='exact'),
@@ -53,12 +55,11 @@ class InputTypeBuildersTest(TestCase):
                     Node(
                         name='last_name', children=[
                             Node(name='exact'),
+                            Node(name='contains'),
                         ],
                     ),
                 ],
             ),
-            Node(name='created_at', children=[Node(name='gt')]),
-            Node(name='completed_at', children=[Node(name='lt')]),
         ]
 
     def test_sequence_to_tree(self) -> None:
@@ -124,7 +125,7 @@ class InputTypeBuildersTest(TestCase):
     def test_create_filter_input_subtype(self) -> None:
         """Test the `create_filter_input_subtype` function."""
         input_object_type = create_filter_input_subtype(
-            self.task_filter_trees_roots[2],
+            self.task_filter_trees_roots[4],
             TaskFilter,
             'Task',
         )
