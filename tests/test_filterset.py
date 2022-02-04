@@ -171,6 +171,9 @@ class AdvancedFilterSetTest(TestCase):
     def test_find_filter(self) -> None:
         """Test the `find_filter` method."""
         filterset = AdvancedFilterSetTest.FindFilterFilterSet()
+        email_filter = filterset.find_filter('email')
+        self.assertEqual(email_filter.field_name, 'email')
+        self.assertEqual(email_filter.lookup_expr, 'exact')
         email_filter = filterset.find_filter(f'email{LOOKUP_SEP}exact')
         self.assertEqual(email_filter.field_name, 'email')
         self.assertEqual(email_filter.lookup_expr, 'exact')

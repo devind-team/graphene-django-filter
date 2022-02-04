@@ -106,7 +106,10 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         the data keys may contain DEFAULT_LOOKUP_EXPR and user can create
         a AdvancedFilterSet class without following the naming convention.
         """
-        field_name, lookup_expr = data_key.rsplit(LOOKUP_SEP, 1)
+        if LOOKUP_SEP in data_key:
+            field_name, lookup_expr = data_key.rsplit(LOOKUP_SEP, 1)
+        else:
+            field_name, lookup_expr = data_key, settings.DEFAULT_LOOKUP_EXPR
         key = field_name if lookup_expr == settings.DEFAULT_LOOKUP_EXPR else data_key
         if key in self.filters:
             return self.filters[key]
