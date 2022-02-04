@@ -7,6 +7,7 @@ import django_filters
 import graphene
 from django.db.models.constants import LOOKUP_SEP
 from django.test import TestCase
+from django.utils.timezone import make_aware
 from graphene_django_filter.filterset import AdvancedFilterSet, tree_input_type_to_data
 
 from .filtersets import TaskFilter
@@ -126,6 +127,19 @@ class AdvancedFilterSetTest(TestCase):
                 'first_name': ('iexact',),
             }
 
+    def setUp(self) -> None:
+        """`AdvancedFilterSetTest` class tests."""
+        self.task_filter_data = {
+            'created_at__gt': make_aware(datetime.strptime('12/31/2018', '%m/%d/%Y')),
+            'and': {
+                'completed_at__lt': make_aware(datetime.strptime('02/02/2019', '%m/%d/%Y')),
+            },
+            'or': {
+                'name__contains': 'Important',
+                'description__contains': 'important',
+            },
+        }
+
     def test_get_form_class(self) -> None:
         """Test getting a tree form class with the `get_form_class` method."""
         form_class = TaskFilter().get_form_class()
@@ -166,3 +180,20 @@ class AdvancedFilterSetTest(TestCase):
         last_name_filter = filterset.find_filter(f'last_name{LOOKUP_SEP}contains')
         self.assertEqual(last_name_filter.field_name, 'last_name')
         self.assertEqual(last_name_filter.lookup_expr, 'contains')
+
+    def test_form(self) -> None:
+        """Test the `form` property."""
+        empty_filter = TaskFilter()
+        self.assertFalse(empty_filter.form.is_bound)
+        task_filter = TaskFilter(data=self.task_filter_data)
+        self.assertTrue(task_filter.form.is_bound)
+        self.assertEqual(
+            {k: v for k, v in self.task_filter_data.items() if k not in ('or', 'and')},
+            task_filter.form.data,
+        )
+        self.assertEqual(self.task_filter_data['or'], task_filter.form.or_form.data)
+        self.assertEqual(self.task_filter_data['and'], task_filter.form.and_form.data)
+        self.assertIsNone(task_filter.form.or_form.or_form)
+        self.assertIsNone(task_filter.form.or_form.and_form)
+        self.assertIsNone(task_filter.form.and_form.or_form)
+        self.assertIsNone(task_filter.form.and_form.and_form)

@@ -21,7 +21,7 @@ def tree_input_type_to_data(
     """Convert a tree_input_type to a FilterSet data."""
     result: Dict[str, Any] = {}
     for key, value in tree_input_type.items():
-        if key in ('or', 'and'):
+        if key in ('and', 'or'):
             result[key] = tree_input_type_to_data(value)
         else:
             k = prefix + LOOKUP_SEP + key if prefix else key
@@ -53,14 +53,14 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         def errors(self) -> ErrorDict:
             """Return an ErrorDict for the data provided for the form."""
             self_errors: ErrorDict = super().errors
-            if self.or_form:
-                self_errors.update({'or': self.or_form.errors})
             if self.and_form:
                 self_errors.update({'and': self.and_form.errors})
+            if self.or_form:
+                self_errors.update({'or': self.or_form.errors})
             return self_errors
 
     def get_form_class(self) -> Type[Union[Form, TreeFormMixin]]:
-        """Return a django Form suitable of validating the filterset data.
+        """Return a django Form class suitable of validating the filterset data.
 
         The form must be tree-like because the data is tree-like.
         """
@@ -76,12 +76,35 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         )
         return tree_form
 
+    @property
+    def form(self) -> Union[Form, TreeFormMixin]:
+        """Return a django Form suitable of validating the filterset data."""
+        if not hasattr(self, '_form'):
+            form_class = self.get_form_class()
+            if self.is_bound:
+                self._form = self.create_form(form_class, self.data)
+            else:
+                self._form = form_class(prefix=self.form_prefix)
+        return self._form
+
+    def create_form(
+        self,
+        form_class: Type[Union[Form, TreeFormMixin]],
+        data: Dict[str, Any],
+    ) -> Union[Form, TreeFormMixin]:
+        """Create a form from a form class and data."""
+        return form_class(
+            data={k: v for k, v in data.items() if k not in ('or', 'and')},
+            or_form=self.create_form(form_class, data['or']) if data.get('or', None) else None,
+            and_form=self.create_form(form_class, data['and']) if data.get('and', None) else None,
+        )
+
     def find_filter(self, data_key: str) -> Filter:
         """Find a filter using a data key.
 
         The data key may differ from a filter name, because
-        the data keys may contain DEFAULT_LOOKUP_EXPR and user can create a AdvancedFilterSet class
-        without following the naming convention.
+        the data keys may contain DEFAULT_LOOKUP_EXPR and user can create
+        a AdvancedFilterSet class without following the naming convention.
         """
         field_name, lookup_expr = data_key.rsplit(LOOKUP_SEP, 1)
         key = field_name if lookup_expr == settings.DEFAULT_LOOKUP_EXPR else data_key
