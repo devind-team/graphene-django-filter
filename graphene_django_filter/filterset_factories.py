@@ -21,7 +21,7 @@ def get_filterset_class(
         graphene_filterset_class = setup_filterset(filterset_class)
     else:
         graphene_filterset_class = custom_filterset_factory(
-            filterset_base_clas=AdvancedFilterSet,
+            filterset_base_class=AdvancedFilterSet,
             **meta
         )
     replace_csv_filters(graphene_filterset_class)
