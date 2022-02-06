@@ -25,7 +25,9 @@ def tree_input_type_to_data(
         if key in ('and', 'or'):
             result[key] = tree_input_type_to_data(value)
         else:
-            k = prefix + LOOKUP_SEP + key if prefix else key
+            k = (prefix + LOOKUP_SEP + key if prefix else key).replace(
+                LOOKUP_SEP + settings.DEFAULT_LOOKUP_EXPR, '',
+            )
             if isinstance(value, InputObjectTypeContainer):
                 result.update(tree_input_type_to_data(value, k))
             else:

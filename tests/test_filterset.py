@@ -99,8 +99,8 @@ class TreeArgsToDataTest(TestCase):
         data = tree_input_type_to_data(self.tree_input_type)
         self.assertEqual(
             {
-                f'name{LOOKUP_SEP}exact': 'Important task',
-                f'description{LOOKUP_SEP}exact': 'This task in very important',
+                'name': 'Important task',
+                'description': 'This task in very important',
                 f'user{LOOKUP_SEP}email{LOOKUP_SEP}contains': 'dev',
                 'or': {
                     'created_at__gt': self.gt_datetime,
