@@ -16,27 +16,27 @@ from .object_types import (
 class Query(graphene.ObjectType):
     """Schema queries."""
 
-    user_fields = AdvancedDjangoFilterConnectionField(
+    users_fields = AdvancedDjangoFilterConnectionField(
         UserFilterFieldsType,
         description='Advanced filter fields with the `UserFilterFieldsType` type',
     )
-    user_filterset = AdvancedDjangoFilterConnectionField(
+    users_filterset = AdvancedDjangoFilterConnectionField(
         UserFilterSetClassType,
         description='Advanced filter fields with the `UserFilterSetClassType` type',
     )
-    task_fields = AdvancedDjangoFilterConnectionField(
+    tasks_fields = AdvancedDjangoFilterConnectionField(
         TaskFilterFieldsType,
         description='Advanced filter field with the `TaskFilterFieldsType` type',
     )
-    task_filterset = AdvancedDjangoFilterConnectionField(
+    tasks_filterset = AdvancedDjangoFilterConnectionField(
         TaskFilterSetClassType,
         description='Advanced filter field with the `TaskFilterSetClassType` type',
     )
-    task_group_fields = AdvancedDjangoFilterConnectionField(
+    task_groups_fields = AdvancedDjangoFilterConnectionField(
         TaskGroupFilterFieldsType,
         description='Advanced filter field with the `TaskGroupFilterFieldsType` type',
     )
-    task_group_filterset = AdvancedDjangoFilterConnectionField(
+    task_groups_filterset = AdvancedDjangoFilterConnectionField(
         TaskGroupFilterSetClassType,
         description='Advanced filter field with the `TaskGroupFilterSetClassType` type',
     )
