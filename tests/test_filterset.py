@@ -72,29 +72,27 @@ class TreeArgsToDataTest(TestCase):
         },
     )
 
-    def setUp(self) -> None:
-        """Set up `tree_input_type_to_data` function tests."""
-        self.gt_datetime = datetime.today() - timedelta(days=1)
-        self.lt_datetime = datetime.today()
-        self.tree_input_type = self.TaskFilterInputType._meta.container({
-            'name': self.TaskNameFilterInputType._meta.container({'exact': 'Important task'}),
-            'description': self.TaskDescriptionFilterInputType._meta.container(
-                {'exact': 'This task in very important'},
+    gt_datetime = datetime.today() - timedelta(days=1)
+    lt_datetime = datetime.today()
+    tree_input_type = TaskFilterInputType._meta.container({
+        'name': TaskNameFilterInputType._meta.container({'exact': 'Important task'}),
+        'description': TaskDescriptionFilterInputType._meta.container(
+            {'exact': 'This task in very important'},
+        ),
+        'user': TaskUserFilterInputType._meta.container(
+            {'email': TaskUserEmailFilterInputType._meta.container({'contains': 'dev'})},
+        ),
+        'or': TaskFilterInputType._meta.container({
+            'created_at': TaskCreatedAtInputType._meta.container(
+                {'gt': gt_datetime},
             ),
-            'user': self.TaskUserFilterInputType._meta.container(
-                {'email': self.TaskUserEmailFilterInputType._meta.container({'contains': 'dev'})},
+        }),
+        'and': TaskFilterInputType._meta.container({
+            'completed_at': TaskCompletedAtInputType._meta.container(
+                {'lt': lt_datetime},
             ),
-            'or': self.TaskFilterInputType._meta.container({
-                'created_at': self.TaskCreatedAtInputType._meta.container(
-                    {'gt': self.gt_datetime},
-                ),
-            }),
-            'and': self.TaskFilterInputType._meta.container({
-                'completed_at': self.TaskCompletedAtInputType._meta.container(
-                    {'lt': self.lt_datetime},
-                ),
-            }),
-        })
+        }),
+    })
 
     def test_tree_input_type_to_data(self) -> None:
         """Test the `tree_input_type_to_data` function."""
@@ -128,18 +126,22 @@ class AdvancedFilterSetTest(TestCase):
                 'first_name': ('iexact',),
             }
 
-    def setUp(self) -> None:
+    task_filter_data = {
+        'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y')),
+        'and': {
+            'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y')),
+        },
+        'or': {
+            'name__contains': 'Important',
+            'description__contains': 'important',
+        },
+    }
+
+    @classmethod
+    def setUpClass(cls) -> None:
         """`AdvancedFilterSetTest` class tests."""
-        self.task_filter_data = {
-            'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y')),
-            'and': {
-                'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y')),
-            },
-            'or': {
-                'name__contains': 'Important',
-                'description__contains': 'important',
-            },
-        }
+        super().setUpClass()
+        generate_data()
 
     def test_get_form_class(self) -> None:
         """Test getting a tree form class with the `get_form_class` method."""
@@ -204,7 +206,6 @@ class AdvancedFilterSetTest(TestCase):
 
     def test_filter_queryset(self) -> None:
         """Test the `filter_queryset` method."""
-        generate_data()
         task_filter = TaskFilter(data=self.task_filter_data)
         getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
         tasks = task_filter.filter_queryset(task_filter.queryset.all())

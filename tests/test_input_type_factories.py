@@ -21,46 +21,44 @@ from .object_types import TaskFilterSetClassType
 class InputTypeBuildersTest(TestCase):
     """Input type factories tests."""
 
-    def setUp(self) -> None:
-        """Set up input type builders tests."""
-        self.abstract_tree_root = Node(
-            'field1', children=(
-                Node(
-                    'field2', children=(
-                        Node(
-                            'field3', children=(
-                                Node('field4'),
-                            ),
+    abstract_tree_root = Node(
+        'field1', children=(
+            Node(
+                'field2', children=(
+                    Node(
+                        'field3', children=(
+                            Node('field4'),
                         ),
                     ),
                 ),
             ),
-        )
-        self.task_filter_trees_roots = [
-            Node(name='name', children=[Node(name='exact'), Node(name='contains')]),
-            Node(name='created_at', children=[Node(name='gt')]),
-            Node(name='completed_at', children=[Node(name='lt')]),
-            Node(name='description', children=[Node(name='exact'), Node(name='contains')]),
-            Node(
-                name='user', children=[
-                    Node(name='exact'),
-                    Node(
-                        name='email', children=[
-                            Node(name='exact'),
-                            Node(name='iexact'),
-                            Node(name='contains'),
-                            Node(name='icontains'),
-                        ],
-                    ),
-                    Node(
-                        name='last_name', children=[
-                            Node(name='exact'),
-                            Node(name='contains'),
-                        ],
-                    ),
-                ],
-            ),
-        ]
+        ),
+    )
+    task_filter_trees_roots = [
+        Node(name='name', children=[Node(name='exact'), Node(name='contains')]),
+        Node(name='created_at', children=[Node(name='gt')]),
+        Node(name='completed_at', children=[Node(name='lt')]),
+        Node(name='description', children=[Node(name='exact'), Node(name='contains')]),
+        Node(
+            name='user', children=[
+                Node(name='exact'),
+                Node(
+                    name='email', children=[
+                        Node(name='exact'),
+                        Node(name='iexact'),
+                        Node(name='contains'),
+                        Node(name='icontains'),
+                    ],
+                ),
+                Node(
+                    name='last_name', children=[
+                        Node(name='exact'),
+                        Node(name='contains'),
+                    ],
+                ),
+            ],
+        ),
+    ]
 
     def test_sequence_to_tree(self) -> None:
         """Test the `sequence_to_tree` function."""
