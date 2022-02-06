@@ -47,6 +47,7 @@ def generate_tasks(seeder: Seeder) -> None:
     seeder.add_entity(
         Task, 15, {
             'user_id': lambda ie: next(user_id_generator),
+            'description': 'This task in very important',
             'created_at': make_aware(datetime.strptime('01/01/2020', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2020', '%m/%d/%Y')),
         },

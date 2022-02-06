@@ -120,19 +120,22 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
 
     def filter_queryset(self, queryset: models.QuerySet) -> models.QuerySet:
         """Filter a queryset with a top level form's `cleaned_data`."""
-        return self.filter_queryset_with_form(queryset, self.form)
+        return self.filter_queryset_with_form(queryset, self.form, False)
 
     def filter_queryset_with_form(
         self,
         queryset: models.QuerySet,
         form: Union[Form, TreeFormMixin],
+        is_or: bool,
     ) -> models.QuerySet:
-        """Filter a query set with a form's `cleaned_data`."""
-        qs = queryset
+        """Filter a query set with a form's `cleaned_data` using `and` or `or` operator."""
+        qs = queryset.none() if is_or else queryset
         for name, value in form.cleaned_data.items():
-            qs = self.find_filter(name).filter(qs, value)
+            new_qs = self.find_filter(name).filter(queryset, value)
+            if new_qs != queryset:
+                qs = qs | new_qs if is_or else qs & new_qs
         if form.and_form:
-            qs = qs & self.filter_queryset_with_form(queryset, form.and_form)
+            qs = qs & self.filter_queryset_with_form(queryset, form.and_form, False)
         if form.or_form:
-            qs = qs | self.filter_queryset_with_form(queryset, form.or_form)
+            qs = qs & self.filter_queryset_with_form(queryset, form.or_form, True)
         return qs

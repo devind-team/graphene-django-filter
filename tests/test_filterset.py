@@ -131,9 +131,9 @@ class AdvancedFilterSetTest(TestCase):
     def setUp(self) -> None:
         """`AdvancedFilterSetTest` class tests."""
         self.task_filter_data = {
-            'created_at__gt': make_aware(datetime.strptime('12/31/2018', '%m/%d/%Y')),
+            'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y')),
             'and': {
-                'completed_at__lt': make_aware(datetime.strptime('02/02/2019', '%m/%d/%Y')),
+                'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y')),
             },
             'or': {
                 'name__contains': 'Important',
@@ -208,4 +208,5 @@ class AdvancedFilterSetTest(TestCase):
         task_filter = TaskFilter(data=self.task_filter_data)
         getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
         tasks = task_filter.filter_queryset(task_filter.queryset.all())
+        self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+\(.+OR.+\)\)')
         self.assertEqual(60, tasks.count())
