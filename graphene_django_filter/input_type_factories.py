@@ -18,13 +18,13 @@ from .filterset import AdvancedFilterSet
 def get_filtering_args_from_filterset(
     filterset_class: Type[AdvancedFilterSet],
     node_type: Type[graphene.ObjectType],
-) -> Dict[str, graphene.InputField]:
+) -> Dict[str, graphene.Argument]:
     """Inspect a FilterSet and produce the arguments to pass to a Graphene Field.
 
     These arguments will be available to filter against in the GraphQL.
     """
     return {
-        'filter': graphene.InputField(
+        'filter': graphene.Argument(
             create_filter_input_type(
                 filterset_to_trees(filterset_class),
                 filterset_class,
