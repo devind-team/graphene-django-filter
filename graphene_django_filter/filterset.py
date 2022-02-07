@@ -56,9 +56,9 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         def errors(self) -> ErrorDict:
             """Return an ErrorDict for the data provided for the form."""
             self_errors: ErrorDict = super().errors
-            if self.and_form:
+            if self.and_form and self.and_form.errors:
                 self_errors.update({'and': self.and_form.errors})
-            if self.or_form:
+            if self.or_form and self.or_form.errors:
                 self_errors.update({'or': self.or_form.errors})
             return self_errors
 

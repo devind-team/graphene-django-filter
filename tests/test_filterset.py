@@ -160,7 +160,13 @@ class AdvancedFilterSetTest(TestCase):
         ), patch.object(
             form.or_form, 'cleaned_data', new={'name': 'child_name_data'}, create=True,
         ):
+            self.assertEqual({}, form.errors)
             form.add_error('name', 'parent_form_error')
+            self.assertEqual(
+                {
+                    'name': ['parent_form_error'],
+                }, form.errors,
+            )
             form.or_form.add_error('name', 'child_form_error')
             self.assertEqual(
                 {
