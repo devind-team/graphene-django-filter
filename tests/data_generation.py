@@ -1,8 +1,7 @@
 """Data generation for testing."""
 
 from datetime import datetime
-from functools import reduce
-from itertools import count, repeat
+from itertools import count
 
 from django.utils.timezone import make_aware
 from django_seed import Seed
@@ -23,16 +22,39 @@ def generate_data() -> None:
 
 def generate_users(seeder: Seeder) -> None:
     """Generate user data for testing."""
-    number_generator = iter(count())
-    seeder.add_entity(User, 5, {'birthday': datetime.strptime('01/01/2000', '%m/%d/%Y')})
+    number_generator = iter(count(1))
+    seeder.add_entity(
+        User, 5, {
+            'birthday': datetime.strptime('01/01/2000', '%m/%d/%Y'),
+            'is_active': False,
+        },
+    )
     seeder.add_entity(User, 10, {'is_active': False})
     seeder.add_entity(
         User, 15, {
-            'email': lambda ie: f'john_doe{next(number_generator)}@domain.com',
+            'email': lambda ie: f'kate{next(number_generator)}@domain.com',
+            'first_name': 'Kate',
+            'is_active': True,
         },
     )
-    seeder.add_entity(User, 20, {'first_name': 'Jane'})
-    seeder.add_entity(User, 25, {'last_name': 'Dou'})
+    number_generator = iter(count(1))
+    seeder.add_entity(
+        User, 20, {
+            'email': lambda ie: f'jane_doe{next(number_generator)}@domain.com',
+            'first_name': 'Jane',
+            'last_name': 'Dou',
+            'is_active': True,
+        },
+    )
+    number_generator = iter(count(1))
+    seeder.add_entity(
+        User, 25, {
+            'email': lambda ie: f'john_doe{next(number_generator)}@domain.com',
+            'first_name': 'John',
+            'last_name': 'Dou',
+            'is_active': True,
+        },
+    )
 
 
 def generate_tasks(seeder: Seeder) -> None:
@@ -43,20 +65,17 @@ def generate_tasks(seeder: Seeder) -> None:
             'completed_at': make_aware(datetime.strptime('02/01/2019', '%m/%d/%Y')),
         },
     )
-    user_id_generator = iter(reduce(lambda acc, i: [*acc, *repeat(i, 5)], range(1, 6), []))
     seeder.add_entity(
         Task, 15, {
-            'user_id': lambda ie: next(user_id_generator),
             'description': 'This task in very important',
             'created_at': make_aware(datetime.strptime('01/01/2020', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2020', '%m/%d/%Y')),
         },
     )
-    number_generator = iter(count())
+    number_generator = iter(count(1))
     seeder.add_entity(
         Task, 45, {
             'name': lambda ie: f'Important task №{next(number_generator)}',
-            'description': 'This task in very important',
             'created_at': make_aware(datetime.strptime('01/01/2021', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2021', '%m/%d/%Y')),
         },
@@ -65,8 +84,8 @@ def generate_tasks(seeder: Seeder) -> None:
 
 def generate_task_groups(seeder: Seeder) -> None:
     """Generate task groups data for testing."""
-    number_generator = iter(count())
-    priority_generator = iter(count())
+    number_generator = iter(count(1))
+    priority_generator = iter(count(1))
     seeder.add_entity(
         TaskGroup, 15, {
             'name': lambda ie: f'Task group №{next(number_generator)}',
