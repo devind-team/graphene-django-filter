@@ -15,8 +15,8 @@ class UserFilterFieldsType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filter_fields = {
-            'email': ('exact',),
-            'first_name': ('exact', 'startswith'),
+            'email': ('exact', 'startswith', 'contains'),
+            'first_name': ('exact', 'contains'),
             'last_name': ('exact', 'contains'),
             'is_active': ('exact',),
             'birthday': ('exact',),
