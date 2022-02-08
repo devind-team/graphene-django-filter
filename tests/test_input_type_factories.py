@@ -150,6 +150,10 @@ class InputTypeBuildersTest(TestCase):
         self.assertTrue(hasattr(input_object_type, 'user'))
         self.assertTrue(hasattr(input_object_type, 'created_at'))
         self.assertTrue(hasattr(input_object_type, 'completed_at'))
+        for operator in ('and', 'or'):
+            operator_input_type = getattr(input_object_type, operator)
+            self.assertIsInstance(operator_input_type.type, graphene.List)
+            self.assertIsInstance(operator_input_type.type.of_type, type(input_object_type))
 
     def test_get_filtering_args_from_filterset(self) -> None:
         """Test the `get_filtering_args_from_filterset` function."""

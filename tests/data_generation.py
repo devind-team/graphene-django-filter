@@ -61,12 +61,14 @@ def generate_tasks(seeder: Seeder) -> None:
     """Generate task data for testing."""
     seeder.add_entity(
         Task, 15, {
+            'user_id': 1,
             'created_at': make_aware(datetime.strptime('01/01/2019', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2019', '%m/%d/%Y')),
         },
     )
     seeder.add_entity(
         Task, 15, {
+            'user_id': 2,
             'description': 'This task in very important',
             'created_at': make_aware(datetime.strptime('01/01/2020', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2020', '%m/%d/%Y')),
@@ -75,6 +77,7 @@ def generate_tasks(seeder: Seeder) -> None:
     number_generator = iter(count(1))
     seeder.add_entity(
         Task, 45, {
+            'user_id': 3,
             'name': lambda ie: f'Important task №{next(number_generator)}',
             'created_at': make_aware(datetime.strptime('01/01/2021', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2021', '%m/%d/%Y')),

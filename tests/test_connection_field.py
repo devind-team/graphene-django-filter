@@ -24,10 +24,10 @@ class AdvancedDjangoFilterConnectionFieldTest(TestCase):
         %s(
             filter: {
                 isActive: {exact: true}
-                or: {
-                    email: {contains: "kate"}
-                    firstName: {exact: "Jane"}
-                }
+                or: [
+                    {email: {contains: "kate"}}
+                    {firstName: {exact: "Jane"}}
+                ]
             }
         ) {
             edges {
@@ -44,18 +44,16 @@ class AdvancedDjangoFilterConnectionFieldTest(TestCase):
     {{
         %s(
             filter: {{
+                completedAt: {{
+                    lt: "{make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y')).isoformat()}"
+                }}
                 createdAt: {{
                     gt: "{make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y')).isoformat()}"
                 }}
-                and: {{
-                    completedAt: {{
-                        lt: "{make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y')).isoformat()}"
-                    }}
-                }}
-                or: {{
-                    name: {{contains: "Important"}}
-                    description: {{contains: "important"}}
-                }}
+                or: [
+                    {{name: {{contains: "Important"}}}}
+                    {{description: {{contains: "important"}}}}
+                ]
             }}
         ) {{
             edges {{
@@ -72,15 +70,15 @@ class AdvancedDjangoFilterConnectionFieldTest(TestCase):
     {
         %s(
             filter: {
-                or: {
-                    name: {exact: "Task group №1"}
-                    and: {
-                        priority: {
-                            gte: 5
-                            lte: 10
-                        }
+                or: [
+                    {name: {exact: "Task group №1"}}
+                    {
+                        and: [
+                            {priority: {gte: 5}}
+                            {priority: {lte: 10}}
+                        ]
                     }
-                }
+                ]
             }
         ) {
             edges {

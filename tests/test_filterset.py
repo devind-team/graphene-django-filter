@@ -15,7 +15,7 @@ from .filtersets import TaskFilter
 from .models import User
 
 
-class TreeArgsToDataTest(TestCase):
+class TreeInputTypeToDataTest(TestCase):
     """`tree_input_type_to_data` function tests."""
 
     class TaskNameFilterInputType(graphene.InputObjectType):
@@ -35,8 +35,12 @@ class TreeArgsToDataTest(TestCase):
 
     class TaskUserFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
-        email = graphene.InputField(lambda: TreeArgsToDataTest.TaskUserEmailFilterInputType)
-        last_name = graphene.InputField(lambda: TreeArgsToDataTest.TaskUserLastNameFilterInputType)
+        email = graphene.InputField(
+            lambda: TreeInputTypeToDataTest.TaskUserEmailFilterInputType,
+        )
+        last_name = graphene.InputField(
+            lambda: TreeInputTypeToDataTest.TaskUserLastNameFilterInputType,
+        )
 
     class TaskCreatedAtInputType(graphene.InputObjectType):
         gt = graphene.DateTime()
@@ -49,25 +53,25 @@ class TreeArgsToDataTest(TestCase):
         (graphene.InputObjectType,),
         {
             'name': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskNameFilterInputType,
+                lambda: TreeInputTypeToDataTest.TaskNameFilterInputType,
             ),
             'description': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskDescriptionFilterInputType,
+                lambda: TreeInputTypeToDataTest.TaskDescriptionFilterInputType,
             ),
             'user': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskUserFilterInputType,
+                lambda: TreeInputTypeToDataTest.TaskUserFilterInputType,
             ),
             'created_at': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskCreatedAtInputType,
+                lambda: TreeInputTypeToDataTest.TaskCreatedAtInputType,
             ),
             'completed_at': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskCompletedAtInputType,
+                lambda: TreeInputTypeToDataTest.TaskCompletedAtInputType,
             ),
             'or': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskFilterInputType,
+                graphene.List(lambda: TreeInputTypeToDataTest.TaskFilterInputType),
             ),
             'and': graphene.InputField(
-                lambda: TreeArgsToDataTest.TaskFilterInputType,
+                graphene.List(lambda: TreeInputTypeToDataTest.TaskFilterInputType),
             ),
         },
     )
@@ -82,16 +86,16 @@ class TreeArgsToDataTest(TestCase):
         'user': TaskUserFilterInputType._meta.container(
             {'email': TaskUserEmailFilterInputType._meta.container({'contains': 'dev'})},
         ),
-        'or': TaskFilterInputType._meta.container({
-            'created_at': TaskCreatedAtInputType._meta.container(
-                {'gt': gt_datetime},
-            ),
-        }),
-        'and': TaskFilterInputType._meta.container({
-            'completed_at': TaskCompletedAtInputType._meta.container(
-                {'lt': lt_datetime},
-            ),
-        }),
+        'or': [
+            TaskFilterInputType._meta.container({
+                'created_at': TaskCreatedAtInputType._meta.container({'gt': gt_datetime}),
+            }),
+        ],
+        'and': [
+            TaskFilterInputType._meta.container({
+                'completed_at': TaskCompletedAtInputType._meta.container({'lt': lt_datetime}),
+            }),
+        ],
     })
 
     def test_tree_input_type_to_data(self) -> None:
@@ -102,12 +106,12 @@ class TreeArgsToDataTest(TestCase):
                 'name': 'Important task',
                 'description': 'This task in very important',
                 f'user{LOOKUP_SEP}email{LOOKUP_SEP}contains': 'dev',
-                'or': {
+                'or': [{
                     'created_at__gt': self.gt_datetime,
-                },
-                'and': {
+                }],
+                'and': [{
                     'completed_at__lt': self.lt_datetime,
-                },
+                }],
             },
             data,
         )
@@ -127,14 +131,15 @@ class AdvancedFilterSetTest(TestCase):
             }
 
     task_filter_data = {
-        'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y')),
-        'and': {
-            'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y')),
-        },
-        'or': {
-            'name__contains': 'Important',
-            'description__contains': 'important',
-        },
+        'user': 3,
+        'and': [
+            {'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y'))},
+            {'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y'))},
+        ],
+        'or': [
+            {'name__contains': 'Important'},
+            {'description__contains': 'important'},
+        ],
     }
 
     @classmethod
@@ -147,18 +152,19 @@ class AdvancedFilterSetTest(TestCase):
         """Test getting a tree form class with the `get_form_class` method."""
         form_class = TaskFilter().get_form_class()
         self.assertEqual('TaskFilterTreeForm', form_class.__name__)
-        form = form_class(or_form=form_class())
-        self.assertIsInstance(form.or_form, form_class)
-        self.assertIsNone(form.and_form)
+        form = form_class(or_forms=[form_class()])
+        self.assertEqual(1, len(form.or_forms))
+        self.assertIsInstance(form.or_forms[0], form_class)
+        self.assertEqual(0, len(form.and_forms))
 
     def test_tree_form_errors(self) -> None:
         """Test getting a tree form class errors."""
         form_class = TaskFilter().get_form_class()
-        form = form_class(or_form=form_class())
+        form = form_class(or_forms=[form_class()])
         with patch.object(
             form, 'cleaned_data', new={'name': 'parent_name_data'}, create=True,
         ), patch.object(
-            form.or_form, 'cleaned_data', new={'name': 'child_name_data'}, create=True,
+            form.or_forms[0], 'cleaned_data', new={'name': 'child_name_data'}, create=True,
         ):
             self.assertEqual({}, form.errors)
             form.add_error('name', 'parent_form_error')
@@ -167,15 +173,38 @@ class AdvancedFilterSetTest(TestCase):
                     'name': ['parent_form_error'],
                 }, form.errors,
             )
-            form.or_form.add_error('name', 'child_form_error')
+            form.or_forms[0].add_error('name', 'child_form_error')
             self.assertEqual(
                 {
                     'name': ['parent_form_error'],
                     'or': {
-                        'name': ['child_form_error'],
+                        'or_0': {
+                            'name': ['child_form_error'],
+                        },
                     },
                 }, form.errors,
             )
+
+    def test_form(self) -> None:
+        """Test the `form` property."""
+        empty_filter = TaskFilter()
+        self.assertFalse(empty_filter.form.is_bound)
+        task_filter = TaskFilter(data=self.task_filter_data)
+        self.assertTrue(task_filter.form.is_bound)
+        self.assertEqual(
+            {k: v for k, v in self.task_filter_data.items() if k not in ('or', 'and')},
+            task_filter.form.data,
+        )
+        for key in ('and', 'or'):
+            forms = getattr(task_filter.form, f'{key}_forms')
+            for data, form in zip(self.task_filter_data[key], forms):
+                self.assertEqual(
+                    {k: v for k, v in data.items() if k not in ('or', 'and')},
+                    form.data,
+                )
+            for form in forms:
+                self.assertEqual(0, len(form.and_forms))
+                self.assertEqual(0, len(form.or_forms))
 
     def test_find_filter(self) -> None:
         """Test the `find_filter` method."""
@@ -193,27 +222,11 @@ class AdvancedFilterSetTest(TestCase):
         self.assertEqual(last_name_filter.field_name, 'last_name')
         self.assertEqual(last_name_filter.lookup_expr, 'contains')
 
-    def test_form(self) -> None:
-        """Test the `form` property."""
-        empty_filter = TaskFilter()
-        self.assertFalse(empty_filter.form.is_bound)
-        task_filter = TaskFilter(data=self.task_filter_data)
-        self.assertTrue(task_filter.form.is_bound)
-        self.assertEqual(
-            {k: v for k, v in self.task_filter_data.items() if k not in ('or', 'and')},
-            task_filter.form.data,
-        )
-        self.assertEqual(self.task_filter_data['or'], task_filter.form.or_form.data)
-        self.assertEqual(self.task_filter_data['and'], task_filter.form.and_form.data)
-        self.assertIsNone(task_filter.form.or_form.or_form)
-        self.assertIsNone(task_filter.form.or_form.and_form)
-        self.assertIsNone(task_filter.form.and_form.or_form)
-        self.assertIsNone(task_filter.form.and_form.and_form)
-
     def test_filter_queryset(self) -> None:
         """Test the `filter_queryset` method."""
         task_filter = TaskFilter(data=self.task_filter_data)
         getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
         tasks = task_filter.filter_queryset(task_filter.queryset.all())
-        self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+\(.+OR.+\)\)')
-        self.assertEqual(60, tasks.count())
+        print(tasks.query)
+        self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+AND.+\(.+OR.+\)\)')
+        self.assertEqual(45, tasks.count())
