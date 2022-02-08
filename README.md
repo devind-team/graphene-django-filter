@@ -82,8 +82,8 @@ For example, the following query returns tasks whose names contain the word "imp
       or: [
         {name: {contains: "important"}}
         and: [
-          {user: email: {contains: "john"}}
-          {user: lastName: {exact: "Dou"}}
+          {user: {email: {contains: "john"}}}
+          {user: {lastName: {exact: "Dou"}}}
         ]
       ]
     }
@@ -130,4 +130,4 @@ input FilterInputType {
   ...FieldLookups
 }
 ```
-For more examples, see tests.
+For more examples, see [tests](https://github.com/devind-team/graphene-django-filter/blob/8faa52bdfc2a66fc74a8aecb798b8358f7f7ea7c/tests/test_connection_field.py#L19).
