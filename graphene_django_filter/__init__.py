@@ -2,4 +2,5 @@
 
 __version__ = '0.3.0'
 
-from .connection_field import DjangoFilterConnectionField
+from .connection_field import AdvancedDjangoFilterConnectionField
+from .filterset import AdvancedFilterSet
