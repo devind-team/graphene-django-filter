@@ -10,7 +10,7 @@ from django_filters import Filter
 from django_filters.conf import settings
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
-from stringcase import camelcase, capitalcase
+from stringcase import pascalcase
 
 from .filterset import AdvancedFilterSet
 
@@ -49,17 +49,17 @@ def create_filter_input_type(
                 **{
                     root.name: graphene.InputField(
                         create_filter_input_subtype(root, filterset_class, type_name),
-                        description=f'{root.name} subfield',
+                        description=f'`{pascalcase(root.name)}` field',
                     )
                     for root in roots
                 },
                 'and': graphene.InputField(
                     graphene.List(lambda: input_type),
-                    description='And field',
+                    description='`And` field',
                 ),
                 'or': graphene.InputField(
                     graphene.List(lambda: input_type),
-                    description='Or field',
+                    description='`Or` field',
                 ),
             },
         ),
@@ -89,12 +89,12 @@ def create_filter_input_subtype(
                 create_filter_input_subtype(
                     child,
                     filterset_class,
-                    prefix + capitalcase(camelcase(root.name)),
+                    prefix + pascalcase(root.name),
                 ),
-                description=f'{child.name} subfield',
+                description=f'`{pascalcase(child.name)}` subfield',
             )
     return create_input_object_type(
-        f'{prefix}{capitalcase(camelcase(root.name))}FilterInputType',
+        f'{prefix}{pascalcase(root.name)}FilterInputType',
         fields,
     )
 
@@ -139,7 +139,8 @@ def get_field(
     if filter_type in ('in', 'range'):
         field = graphene.List(field.get_type())
     field_type = field.InputField()
-    field_type.description = getattr(filter_field, 'label')
+    field_type.description = getattr(filter_field, 'label') or \
+        f'`{pascalcase(filter_field.lookup_expr)}` lookup'
     return field_type
 
 
