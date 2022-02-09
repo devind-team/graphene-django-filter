@@ -24,6 +24,8 @@ def tree_input_type_to_data(
     for key, value in tree_input_type.items():
         if key in ('and', 'or'):
             result[key] = [tree_input_type_to_data(subtree) for subtree in value]
+        elif key == 'not':
+            result[key] = tree_input_type_to_data(value)
         else:
             k = (prefix + LOOKUP_SEP + key if prefix else key).replace(
                 LOOKUP_SEP + settings.DEFAULT_LOOKUP_EXPR, '',
@@ -43,14 +45,16 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
 
         def __init__(
             self,
-            or_forms: Optional[List['AdvancedFilterSet.TreeFormMixin']] = None,
             and_forms: Optional[List['AdvancedFilterSet.TreeFormMixin']] = None,
+            or_forms: Optional[List['AdvancedFilterSet.TreeFormMixin']] = None,
+            not_form: Optional['AdvancedFilterSet.TreeFormMixin'] = None,
             *args,
             **kwargs
         ) -> None:
             super().__init__(*args, **kwargs)
-            self.or_forms = or_forms or []
             self.and_forms = and_forms or []
+            self.or_forms = or_forms or []
+            self.not_form = not_form
 
         @property
         def errors(self) -> ErrorDict:
@@ -63,6 +67,8 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
                         errors[f'{key}_{i}'] = form.errors
                 if len(errors):
                     self_errors.update({key: errors})
+            if self.not_form and self.not_form.errors:
+                self_errors.update({'not': self.not_form.errors})
             return self_errors
 
     def get_form_class(self) -> Type[Union[Form, TreeFormMixin]]:
@@ -100,9 +106,10 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
     ) -> Union[Form, TreeFormMixin]:
         """Create a form from a form class and data."""
         return form_class(
-            data={k: v for k, v in data.items() if k not in ('or', 'and')},
+            data={k: v for k, v in data.items() if k not in ('and', 'or', 'not')},
             and_forms=[self.create_form(form_class, and_data) for and_data in data.get('and', [])],
             or_forms=[self.create_form(form_class, or_data) for or_data in data.get('or', [])],
+            not_form=self.create_form(form_class, data['not']) if data.get('not', None) else None,
         )
 
     def find_filter(self, data_key: str) -> Filter:

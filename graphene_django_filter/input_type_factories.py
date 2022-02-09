@@ -61,6 +61,7 @@ def create_filter_input_type(
                     graphene.List(lambda: input_type),
                     description='`Or` field',
                 ),
+                'not': graphene.InputField(lambda: input_type, description='`Not` field'),
             },
         ),
     )

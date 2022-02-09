@@ -43,6 +43,7 @@ class InputTypeBuildersTest(TestCase):
         Node(
             name='user', children=[
                 Node(name='exact'),
+                Node(name='in'),
                 Node(
                     name='email', children=[
                         Node(name='exact'),
@@ -155,6 +156,9 @@ class InputTypeBuildersTest(TestCase):
             self.assertEqual(f'`{operator.capitalize()}` field', operator_input_type.description)
             self.assertIsInstance(operator_input_type.type, graphene.List)
             self.assertEqual(input_object_type, operator_input_type.type.of_type)
+        not_input_type = getattr(input_object_type, 'not')
+        self.assertEqual('`Not` field', not_input_type.description)
+        self.assertEqual(input_object_type, not_input_type.type)
 
     def test_get_filtering_args_from_filterset(self) -> None:
         """Test the `get_filtering_args_from_filterset` function."""

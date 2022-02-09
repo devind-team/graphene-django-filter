@@ -1,5 +1,6 @@
 """`filterset` module tests."""
 
+from contextlib import ExitStack
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -15,8 +16,8 @@ from .filtersets import TaskFilter
 from .models import User
 
 
-class TreeInputTypeToDataTest(TestCase):
-    """`tree_input_type_to_data` function tests."""
+class GlobalFunctionsTest(TestCase):
+    """Testing global functions of the filterset module."""
 
     class TaskNameFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
@@ -36,10 +37,10 @@ class TreeInputTypeToDataTest(TestCase):
     class TaskUserFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
         email = graphene.InputField(
-            lambda: TreeInputTypeToDataTest.TaskUserEmailFilterInputType,
+            lambda: GlobalFunctionsTest.TaskUserEmailFilterInputType,
         )
         last_name = graphene.InputField(
-            lambda: TreeInputTypeToDataTest.TaskUserLastNameFilterInputType,
+            lambda: GlobalFunctionsTest.TaskUserLastNameFilterInputType,
         )
 
     class TaskCreatedAtInputType(graphene.InputObjectType):
@@ -53,26 +54,27 @@ class TreeInputTypeToDataTest(TestCase):
         (graphene.InputObjectType,),
         {
             'name': graphene.InputField(
-                lambda: TreeInputTypeToDataTest.TaskNameFilterInputType,
+                lambda: GlobalFunctionsTest.TaskNameFilterInputType,
             ),
             'description': graphene.InputField(
-                lambda: TreeInputTypeToDataTest.TaskDescriptionFilterInputType,
+                lambda: GlobalFunctionsTest.TaskDescriptionFilterInputType,
             ),
             'user': graphene.InputField(
-                lambda: TreeInputTypeToDataTest.TaskUserFilterInputType,
+                lambda: GlobalFunctionsTest.TaskUserFilterInputType,
             ),
             'created_at': graphene.InputField(
-                lambda: TreeInputTypeToDataTest.TaskCreatedAtInputType,
+                lambda: GlobalFunctionsTest.TaskCreatedAtInputType,
             ),
             'completed_at': graphene.InputField(
-                lambda: TreeInputTypeToDataTest.TaskCompletedAtInputType,
-            ),
-            'or': graphene.InputField(
-                graphene.List(lambda: TreeInputTypeToDataTest.TaskFilterInputType),
+                lambda: GlobalFunctionsTest.TaskCompletedAtInputType,
             ),
             'and': graphene.InputField(
-                graphene.List(lambda: TreeInputTypeToDataTest.TaskFilterInputType),
+                graphene.List(lambda: GlobalFunctionsTest.TaskFilterInputType),
             ),
+            'or': graphene.InputField(
+                graphene.List(lambda: GlobalFunctionsTest.TaskFilterInputType),
+            ),
+            'not': graphene.InputField(lambda: GlobalFunctionsTest.TaskFilterInputType),
         },
     )
 
@@ -86,16 +88,21 @@ class TreeInputTypeToDataTest(TestCase):
         'user': TaskUserFilterInputType._meta.container(
             {'email': TaskUserEmailFilterInputType._meta.container({'contains': 'dev'})},
         ),
-        'or': [
-            TaskFilterInputType._meta.container({
-                'created_at': TaskCreatedAtInputType._meta.container({'gt': gt_datetime}),
-            }),
-        ],
         'and': [
             TaskFilterInputType._meta.container({
                 'completed_at': TaskCompletedAtInputType._meta.container({'lt': lt_datetime}),
             }),
         ],
+        'or': [
+            TaskFilterInputType._meta.container({
+                'created_at': TaskCreatedAtInputType._meta.container({'gt': gt_datetime}),
+            }),
+        ],
+        'not': TaskFilterInputType._meta.container({
+            'user': TaskUserFilterInputType._meta.container(
+                {'first_name': TaskUserEmailFilterInputType._meta.container({'exact': 'John'})},
+            ),
+        }),
     })
 
     def test_tree_input_type_to_data(self) -> None:
@@ -106,12 +113,15 @@ class TreeInputTypeToDataTest(TestCase):
                 'name': 'Important task',
                 'description': 'This task in very important',
                 f'user{LOOKUP_SEP}email{LOOKUP_SEP}contains': 'dev',
-                'or': [{
-                    'created_at__gt': self.gt_datetime,
-                }],
                 'and': [{
                     'completed_at__lt': self.lt_datetime,
                 }],
+                'or': [{
+                    'created_at__gt': self.gt_datetime,
+                }],
+                'not': {
+                    f'user{LOOKUP_SEP}first_name': 'John',
+                },
             },
             data,
         )
@@ -131,7 +141,7 @@ class AdvancedFilterSetTest(TestCase):
             }
 
     task_filter_data = {
-        'user': 3,
+        'user__in': '2,3',
         'and': [
             {'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y'))},
             {'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y'))},
@@ -140,6 +150,9 @@ class AdvancedFilterSetTest(TestCase):
             {'name__contains': 'Important'},
             {'description__contains': 'important'},
         ],
+        'not': {
+            'user': 2,
+        },
     }
 
     @classmethod
@@ -152,38 +165,45 @@ class AdvancedFilterSetTest(TestCase):
         """Test getting a tree form class with the `get_form_class` method."""
         form_class = TaskFilter().get_form_class()
         self.assertEqual('TaskFilterTreeForm', form_class.__name__)
-        form = form_class(or_forms=[form_class()])
+        form = form_class(or_forms=[form_class()], not_form=form_class())
+        self.assertEqual(0, len(form.and_forms))
         self.assertEqual(1, len(form.or_forms))
         self.assertIsInstance(form.or_forms[0], form_class)
-        self.assertEqual(0, len(form.and_forms))
+        self.assertIsInstance(form.not_form, form_class)
 
     def test_tree_form_errors(self) -> None:
         """Test getting a tree form class errors."""
         form_class = TaskFilter().get_form_class()
-        form = form_class(or_forms=[form_class()])
-        with patch.object(
-            form, 'cleaned_data', new={'name': 'parent_name_data'}, create=True,
-        ), patch.object(
-            form.or_forms[0], 'cleaned_data', new={'name': 'child_name_data'}, create=True,
-        ):
-            self.assertEqual({}, form.errors)
-            form.add_error('name', 'parent_form_error')
-            self.assertEqual(
-                {
-                    'name': ['parent_form_error'],
-                }, form.errors,
-            )
-            form.or_forms[0].add_error('name', 'child_form_error')
-            self.assertEqual(
-                {
-                    'name': ['parent_form_error'],
-                    'or': {
-                        'or_0': {
-                            'name': ['child_form_error'],
-                        },
+        form = form_class(or_forms=[form_class()], not_form=form_class())
+        with ExitStack() as stack:
+            for f in (form, form.or_forms[0], form.not_form):
+                stack.enter_context(
+                    patch.object(f, 'cleaned_data', new={'name': 'parent_name_data'}, create=True),
+                )
+            all_errors = {
+                'name': ['root_form_error'],
+                'or': {
+                    'or_0': {
+                        'name': ['or_form_error'],
                     },
-                }, form.errors,
+                },
+                'not': {
+                    'name': ['not_form_error'],
+                },
+            }
+            self.assertEqual({}, form.errors)
+            form.add_error('name', 'root_form_error')
+            self.assertEqual(
+                {k: v for k, v in all_errors.items() if k == 'name'},
+                form.errors,
             )
+            form.or_forms[0].add_error('name', 'or_form_error')
+            self.assertEqual(
+                {k: v for k, v in all_errors.items() if k in ('name', 'or')},
+                form.errors,
+            )
+            form.not_form.add_error('name', 'not_form_error')
+            self.assertEqual(all_errors, form.errors)
 
     def test_form(self) -> None:
         """Test the `form` property."""
@@ -192,19 +212,19 @@ class AdvancedFilterSetTest(TestCase):
         task_filter = TaskFilter(data=self.task_filter_data)
         self.assertTrue(task_filter.form.is_bound)
         self.assertEqual(
-            {k: v for k, v in self.task_filter_data.items() if k not in ('or', 'and')},
+            {k: v for k, v in self.task_filter_data.items() if k not in ('and', 'or', 'not')},
             task_filter.form.data,
         )
         for key in ('and', 'or'):
             forms = getattr(task_filter.form, f'{key}_forms')
             for data, form in zip(self.task_filter_data[key], forms):
-                self.assertEqual(
-                    {k: v for k, v in data.items() if k not in ('or', 'and')},
-                    form.data,
-                )
+                self.assertEqual(data, form.data)
             for form in forms:
                 self.assertEqual(0, len(form.and_forms))
                 self.assertEqual(0, len(form.or_forms))
+        self.assertEqual(self.task_filter_data['not'], task_filter.form.not_form.data)
+        self.assertEqual(0, len(task_filter.form.not_form.and_forms))
+        self.assertEqual(0, len(task_filter.form.not_form.or_forms))
 
     def test_find_filter(self) -> None:
         """Test the `find_filter` method."""
@@ -229,4 +249,4 @@ class AdvancedFilterSetTest(TestCase):
         tasks = task_filter.filter_queryset(task_filter.queryset.all())
         print(tasks.query)
         self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+AND.+\(.+OR.+\)\)')
-        self.assertEqual(45, tasks.count())
+        self.assertEqual(60, tasks.count())
