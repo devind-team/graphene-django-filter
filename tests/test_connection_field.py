@@ -94,7 +94,7 @@ class AdvancedDjangoFilterConnectionFieldTest(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """`AdvancedDjangoFilterConnectionField` class tests."""
+        """Set up `AdvancedDjangoFilterConnectionField` class tests."""
         super().setUpClass()
         generate_data()
 

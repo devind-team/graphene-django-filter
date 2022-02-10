@@ -6,18 +6,23 @@ from unittest.mock import patch
 
 import django_filters
 import graphene
-from django.db.models.constants import LOOKUP_SEP
+from django.db import models
 from django.test import TestCase
 from django.utils.timezone import make_aware
-from graphene_django_filter.filterset import AdvancedFilterSet, tree_input_type_to_data
+from graphene_django_filter.filterset import (
+    AdvancedFilterSet,
+    QuerySetProxy,
+    get_q,
+    tree_input_type_to_data,
+)
 
 from .data_generation import generate_data
 from .filtersets import TaskFilter
 from .models import User
 
 
-class GlobalFunctionsTest(TestCase):
-    """Testing global functions of the filterset module."""
+class UtilsTest(TestCase):
+    """Tests for utility functions and classes of the `filterset` module."""
 
     class TaskNameFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
@@ -37,10 +42,10 @@ class GlobalFunctionsTest(TestCase):
     class TaskUserFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
         email = graphene.InputField(
-            lambda: GlobalFunctionsTest.TaskUserEmailFilterInputType,
+            lambda: UtilsTest.TaskUserEmailFilterInputType,
         )
         last_name = graphene.InputField(
-            lambda: GlobalFunctionsTest.TaskUserLastNameFilterInputType,
+            lambda: UtilsTest.TaskUserLastNameFilterInputType,
         )
 
     class TaskCreatedAtInputType(graphene.InputObjectType):
@@ -53,28 +58,14 @@ class GlobalFunctionsTest(TestCase):
         'TaskFilterInputType',
         (graphene.InputObjectType,),
         {
-            'name': graphene.InputField(
-                lambda: GlobalFunctionsTest.TaskNameFilterInputType,
-            ),
-            'description': graphene.InputField(
-                lambda: GlobalFunctionsTest.TaskDescriptionFilterInputType,
-            ),
-            'user': graphene.InputField(
-                lambda: GlobalFunctionsTest.TaskUserFilterInputType,
-            ),
-            'created_at': graphene.InputField(
-                lambda: GlobalFunctionsTest.TaskCreatedAtInputType,
-            ),
-            'completed_at': graphene.InputField(
-                lambda: GlobalFunctionsTest.TaskCompletedAtInputType,
-            ),
-            'and': graphene.InputField(
-                graphene.List(lambda: GlobalFunctionsTest.TaskFilterInputType),
-            ),
-            'or': graphene.InputField(
-                graphene.List(lambda: GlobalFunctionsTest.TaskFilterInputType),
-            ),
-            'not': graphene.InputField(lambda: GlobalFunctionsTest.TaskFilterInputType),
+            'name': graphene.InputField(lambda: UtilsTest.TaskNameFilterInputType),
+            'description': graphene.InputField(lambda: UtilsTest.TaskDescriptionFilterInputType),
+            'user': graphene.InputField(lambda: UtilsTest.TaskUserFilterInputType),
+            'created_at': graphene.InputField(lambda: UtilsTest.TaskCreatedAtInputType),
+            'completed_at': graphene.InputField(lambda: UtilsTest.TaskCompletedAtInputType),
+            'and': graphene.InputField(graphene.List(lambda: UtilsTest.TaskFilterInputType)),
+            'or': graphene.InputField(graphene.List(lambda: UtilsTest.TaskFilterInputType)),
+            'not': graphene.InputField(lambda: UtilsTest.TaskFilterInputType),
         },
     )
 
@@ -112,7 +103,7 @@ class GlobalFunctionsTest(TestCase):
             {
                 'name': 'Important task',
                 'description': 'This task in very important',
-                f'user{LOOKUP_SEP}email{LOOKUP_SEP}contains': 'dev',
+                'user__email__contains': 'dev',
                 'and': [{
                     'completed_at__lt': self.lt_datetime,
                 }],
@@ -120,11 +111,35 @@ class GlobalFunctionsTest(TestCase):
                     'created_at__gt': self.gt_datetime,
                 }],
                 'not': {
-                    f'user{LOOKUP_SEP}first_name': 'John',
+                    'user__first_name': 'John',
                 },
             },
             data,
         )
+
+    def test_queryset_proxy(self) -> None:
+        """Test the `QuerySetProxy` class."""
+        queryset = User.objects.all()
+        queryset_proxy = QuerySetProxy(queryset)
+        self.assertEqual(queryset.get, queryset_proxy.get)
+        self.assertNotEqual(queryset.filter, queryset_proxy.filter)
+        self.assertNotEqual(queryset.exclude, queryset_proxy.exclude)
+        queryset_proxy.filter(email__contains='kate').exclude(
+            models.Q(first_name='John') & models.Q(last_name='Dou'),
+        )
+        self.assertEqual(
+            models.Q(email__contains='kate') & ~(
+                models.Q(first_name='John') & models.Q(last_name='Dou')
+            ),
+            queryset_proxy.q,
+        )
+
+    def test_get_q(self) -> None:
+        """Test the `test_get_q` method."""
+        queryset = User.objects.all()
+        filter_obj = django_filters.Filter(field_name='first_name', lookup_expr='exact')
+        q = get_q(queryset, filter_obj, 'John')
+        self.assertEqual(models.Q(first_name__exact='John'), q)
 
 
 class AdvancedFilterSetTest(TestCase):
@@ -157,7 +172,7 @@ class AdvancedFilterSetTest(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """`AdvancedFilterSetTest` class tests."""
+        """Set up `AdvancedFilterSetTest` class tests."""
         super().setUpClass()
         generate_data()
 
@@ -232,13 +247,13 @@ class AdvancedFilterSetTest(TestCase):
         email_filter = filterset.find_filter('email')
         self.assertEqual(email_filter.field_name, 'email')
         self.assertEqual(email_filter.lookup_expr, 'exact')
-        email_filter = filterset.find_filter(f'email{LOOKUP_SEP}exact')
+        email_filter = filterset.find_filter('email__exact')
         self.assertEqual(email_filter.field_name, 'email')
         self.assertEqual(email_filter.lookup_expr, 'exact')
-        first_name_filter = filterset.find_filter(f'first_name{LOOKUP_SEP}iexact')
+        first_name_filter = filterset.find_filter('first_name__iexact')
         self.assertEqual(first_name_filter.field_name, 'first_name')
         self.assertEqual(first_name_filter.lookup_expr, 'iexact')
-        last_name_filter = filterset.find_filter(f'last_name{LOOKUP_SEP}contains')
+        last_name_filter = filterset.find_filter('last_name__contains')
         self.assertEqual(last_name_filter.field_name, 'last_name')
         self.assertEqual(last_name_filter.lookup_expr, 'contains')
 
@@ -247,5 +262,5 @@ class AdvancedFilterSetTest(TestCase):
         task_filter = TaskFilter(data=self.task_filter_data)
         getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
         tasks = task_filter.filter_queryset(task_filter.queryset.all())
-        self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+AND.+\(.+OR.+\)\)')
+        self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+AND \(.+OR.+\) AND NOT \(.+\)\)')
         self.assertEqual(45, tasks.count())
