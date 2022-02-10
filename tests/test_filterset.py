@@ -18,7 +18,7 @@ from graphene_django_filter.filterset import (
 
 from .data_generation import generate_data
 from .filtersets import TaskFilter
-from .models import User
+from .models import Task, User
 
 
 class UtilsTest(TestCase):
@@ -155,11 +155,13 @@ class AdvancedFilterSetTest(TestCase):
                 'first_name': ('iexact',),
             }
 
+    gt_datetime = make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y'))
+    lt_datetime = make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y'))
     task_filter_data = {
         'user__in': '2,3',
         'and': [
-            {'created_at__gt': make_aware(datetime.strptime('12/31/2019', '%m/%d/%Y'))},
-            {'completed_at__lt': make_aware(datetime.strptime('02/02/2021', '%m/%d/%Y'))},
+            {'created_at__gt': gt_datetime},
+            {'completed_at__lt': lt_datetime},
         ],
         'or': [
             {'name__contains': 'Important'},
@@ -262,5 +264,11 @@ class AdvancedFilterSetTest(TestCase):
         task_filter = TaskFilter(data=self.task_filter_data)
         getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
         tasks = task_filter.filter_queryset(task_filter.queryset.all())
-        self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+AND \(.+OR.+\) AND NOT \(.+\)\)')
-        self.assertEqual(45, tasks.count())
+        expected_tasks = Task.objects.filter(
+            models.Q(user__in=(2, 3)) & models.Q(created_at__gt=self.gt_datetime) & models.Q(
+                completed_at__lt=self.lt_datetime,
+            ) & models.Q(
+                models.Q(name__contains='Important') | models.Q(description__contains='important'),
+            ) & ~models.Q(user=2),
+        ).all()
+        self.assertEqual(list(expected_tasks), list(tasks))
