@@ -25,6 +25,7 @@ stringcase = "^1.2.0"
 anytree = "^2.8.0"
 django-seed = "^0.3.1"
 psycopg2-binary = "^2.9.3"
+wrapt = "^1.13.3"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"

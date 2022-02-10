@@ -247,6 +247,5 @@ class AdvancedFilterSetTest(TestCase):
         task_filter = TaskFilter(data=self.task_filter_data)
         getattr(task_filter.form, 'errors')  # Ensure form validation before filtering
         tasks = task_filter.filter_queryset(task_filter.queryset.all())
-        print(tasks.query)
         self.assertRegex(str(tasks.query), r'\(.+AND.+AND.+AND.+\(.+OR.+\)\)')
-        self.assertEqual(60, tasks.count())
+        self.assertEqual(45, tasks.count())

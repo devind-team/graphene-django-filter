@@ -13,6 +13,7 @@ from django_filters import Filter
 from django_filters.conf import settings
 from django_filters.filterset import BaseFilterSet, FilterSetMetaclass
 from graphene.types.inputobjecttype import InputObjectTypeContainer
+from wrapt import ObjectProxy
 
 
 def tree_input_type_to_data(
@@ -35,6 +36,56 @@ def tree_input_type_to_data(
             else:
                 result[k] = value
     return result
+
+
+class QuerySetProxy(ObjectProxy):
+    """Proxy for a QuerySet object.
+
+    The Django-filter library works with QuerySet objects,
+    but such objects do not provide the ability to apply the negation operator to the entire object.
+    Therefore, it is convenient to work with the Q object instead of the QuerySet.
+    This class replaces the original QuerySet object,
+    and creates a Q object when calling the `filter` and `exclude` methods.
+    """
+
+    __slots__ = 'q'
+
+    def __init__(self, wrapped: models.QuerySet) -> None:
+        super().__init__(wrapped)
+        self.q = models.Q()
+
+    def __getattr__(self, name: str) -> Any:
+        """Return QuerySet attributes for all cases except `q`, `filter` and `exclude`."""
+        if name == 'filter':
+            return self.filter_
+        elif name == 'exclude':
+            return self.exclude_
+        return super().__getattr__(name)
+
+    def filter_(self, *args, **kwargs) -> 'QuerySetProxy':
+        """Replace the `filter` method of the QuerySet class."""
+        if len(kwargs) == 0 and len(args) == 1 and isinstance(args[0], models.Q):
+            q = args[0]
+        else:
+            q = models.Q(*args, **kwargs)
+        self.q = self.q & q
+        return self
+
+    def exclude_(self, *args, **kwargs) -> 'QuerySetProxy':
+        """Replace the `exclude` method of the QuerySet class."""
+        if len(kwargs) == 0 and len(args) == 1 and isinstance(args[0], models.Q):
+            q = args[0]
+        else:
+            q = models.Q(*args, **kwargs)
+        self.q = self.q & ~q
+        return self
+
+
+def get_q(queryset: models.QuerySet, filter_obj: Filter, value: Any) -> models.Q:
+    """Return a Q object for a queryset, filter and value."""
+    queryset_proxy = QuerySetProxy(queryset)
+    filter_obj.filter(queryset_proxy, value)
+    return queryset_proxy.q
 
 
 class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
@@ -132,25 +183,22 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
 
     def filter_queryset(self, queryset: models.QuerySet) -> models.QuerySet:
         """Filter a queryset with a top level form's `cleaned_data`."""
-        return self.filter_queryset_with_form(queryset, self.form)
+        return queryset.filter(self.get_q_for_form(queryset, self.form))
 
-    def filter_queryset_with_form(
+    def get_q_for_form(
         self,
         queryset: models.QuerySet,
         form: Union[Form, TreeFormMixin],
-    ) -> models.QuerySet:
-        """Filter a query set with a form's `cleaned_data` using `&` or `|` operator."""
-        qs = queryset
+    ) -> models.Q:
+        """Return a Q object for a form's `cleaned_data` using `and`, `or` or `not` operator."""
+        q = models.Q()
         for name, value in form.cleaned_data.items():
-            qs = self.find_filter(name).filter(qs, value)
-        and_qs = queryset
+            q = q & get_q(queryset, self.find_filter(name), value)
+        and_q = models.Q()
         for and_form in form.and_forms:
-            new_qs = self.filter_queryset_with_form(queryset, and_form)
-            if new_qs != queryset:
-                and_qs = and_qs & new_qs
-        or_qs = queryset.none()
+            and_q = and_q & self.get_q_for_form(queryset, and_form)
+        or_q = models.Q()
         for or_form in form.or_forms:
-            new_qs = self.filter_queryset_with_form(queryset, or_form)
-            if new_qs != queryset:
-                or_qs = or_qs | new_qs
-        return qs & and_qs & or_qs if or_qs else qs & and_qs
+            or_q = or_q | self.get_q_for_form(queryset, or_form)
+        not_q = ~self.get_q_for_form(queryset, form.not_form) if form.not_form else models.Q()
+        return q & and_q & or_q & not_q
