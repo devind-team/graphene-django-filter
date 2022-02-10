@@ -79,6 +79,10 @@ class AdvancedDjangoFilterConnectionFieldTest(TestCase):
                         ]
                     }
                 ]
+                and: [
+                    {not: {priority: {exact: 7}}}
+                    {not: {priority: {exact: 9}}}
+                ]
             }
         ) {
             edges {
@@ -148,7 +152,7 @@ class AdvancedDjangoFilterConnectionFieldTest(TestCase):
 
     def test_task_groups_execution(self) -> None:
         """Test the schema execution by querying task groups."""
-        expected = [1] + list(range(5, 11))
+        expected = [1, 5, 6, 8, 10]
         execution_result = schema.execute(self.task_groups_fields_query)
         self.assertEqual(expected, self.get_ids(execution_result, 'taskGroupsFields'))
         execution_result = schema.execute(self.task_groups_filterset_query)

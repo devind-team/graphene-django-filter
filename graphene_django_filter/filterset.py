@@ -55,7 +55,7 @@ class QuerySetProxy(ObjectProxy):
         self.q = models.Q()
 
     def __getattr__(self, name: str) -> Any:
-        """Return QuerySet attributes for all cases except `q`, `filter` and `exclude`."""
+        """Return QuerySet attributes for all cases except `filter` and `exclude`."""
         if name == 'filter':
             return self.filter_
         elif name == 'exclude':
