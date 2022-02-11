@@ -13,6 +13,7 @@ from graphene_django_filter.input_type_factories import (
     sequence_to_tree,
     try_add_sequence,
 )
+from stringcase import pascalcase
 
 from .filtersets import TaskFilter
 from .object_types import TaskFilterSetClassType
@@ -42,6 +43,7 @@ class InputTypeBuildersTest(TestCase):
         Node(
             name='user', children=[
                 Node(name='exact'),
+                Node(name='in'),
                 Node(
                     name='email', children=[
                         Node(name='exact'),
@@ -128,14 +130,13 @@ class InputTypeBuildersTest(TestCase):
             'Task',
         )
         self.assertEqual('TaskUserFilterInputType', input_object_type.__name__)
-        self.assertTrue(hasattr(input_object_type, 'exact'))
-        self.assertTrue(hasattr(input_object_type, 'last_name'))
-        self.assertTrue(hasattr(input_object_type, 'email'))
+        self.assertEqual('`Exact` lookup', getattr(input_object_type, 'exact').description)
+        self.assertEqual('`LastName` subfield', getattr(input_object_type, 'last_name').description)
+        self.assertEqual('`Email` subfield', getattr(input_object_type, 'email').description)
         email_type = getattr(input_object_type, 'email').type
         self.assertEqual('TaskUserEmailFilterInputType', email_type.__name__)
-        self.assertTrue(hasattr(email_type, 'iexact'))
-        self.assertTrue(hasattr(email_type, 'contains'))
-        self.assertTrue(hasattr(email_type, 'icontains'))
+        for attr in ('iexact', 'contains', 'icontains'):
+            self.assertEqual(f'`{pascalcase(attr)}` lookup', getattr(email_type, attr).description)
 
     def test_create_filter_input_type(self) -> None:
         """Test the `create_filter_input_type` function."""
@@ -145,15 +146,19 @@ class InputTypeBuildersTest(TestCase):
             'Task',
         )
         self.assertEqual('TaskFilterInputType', input_object_type.__name__)
-        self.assertTrue(hasattr(input_object_type, 'name'))
-        self.assertTrue(hasattr(input_object_type, 'description'))
-        self.assertTrue(hasattr(input_object_type, 'user'))
-        self.assertTrue(hasattr(input_object_type, 'created_at'))
-        self.assertTrue(hasattr(input_object_type, 'completed_at'))
+        for attr in ('name', 'description', 'user', 'created_at', 'completed_at'):
+            self.assertEqual(
+                f'`{pascalcase(attr)}` field',
+                getattr(input_object_type, attr).description,
+            )
         for operator in ('and', 'or'):
             operator_input_type = getattr(input_object_type, operator)
+            self.assertEqual(f'`{operator.capitalize()}` field', operator_input_type.description)
             self.assertIsInstance(operator_input_type.type, graphene.List)
-            self.assertIsInstance(operator_input_type.type.of_type, type(input_object_type))
+            self.assertEqual(input_object_type, operator_input_type.type.of_type)
+        not_input_type = getattr(input_object_type, 'not')
+        self.assertEqual('`Not` field', not_input_type.description)
+        self.assertEqual(input_object_type, not_input_type.type)
 
     def test_get_filtering_args_from_filterset(self) -> None:
         """Test the `get_filtering_args_from_filterset` function."""

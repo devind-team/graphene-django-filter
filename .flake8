@@ -3,6 +3,7 @@ max-line-length = 100
 per-file-ignores =
     __init__.py:F401
     connection_field.py:A002
+    test_filterset.py:N802
 ignore = ANN002,ANN003,ANN101,ANN102,D106,D107
 
 import-order-style = pycharm

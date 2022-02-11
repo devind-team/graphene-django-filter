@@ -47,7 +47,7 @@ class TaskFilterFieldsType(DjangoObjectType):
             'created_at': ('gt',),
             'completed_at': ('lt',),
             'description': ('exact', 'contains'),
-            'user': ('exact',),
+            'user': ('exact', 'in'),
             'user__email': ('exact', 'iexact', 'contains', 'icontains'),
             'user__last_name': ('exact', 'contains'),
         }
