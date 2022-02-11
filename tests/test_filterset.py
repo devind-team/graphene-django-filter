@@ -1,5 +1,6 @@
 """`filterset` module tests."""
 
+from collections import OrderedDict
 from contextlib import ExitStack
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from graphene_django_filter.filterset import (
     AdvancedFilterSet,
     QuerySetProxy,
     get_q,
+    is_special_lookup,
     tree_input_type_to_data,
 )
 
@@ -135,11 +137,16 @@ class UtilsTest(TestCase):
         )
 
     def test_get_q(self) -> None:
-        """Test the `test_get_q` method."""
+        """Test the `test_get_q` function."""
         queryset = User.objects.all()
         filter_obj = django_filters.Filter(field_name='first_name', lookup_expr='exact')
         q = get_q(queryset, filter_obj, 'John')
         self.assertEqual(models.Q(first_name__exact='John'), q)
+
+    def test_is_special_lookup(self) -> None:
+        """Test the `is_special_lookup` function."""
+        self.assertFalse(is_special_lookup('name__exact'))
+        self.assertTrue(is_special_lookup('name__full_search'))
 
 
 class AdvancedFilterSetTest(TestCase):
@@ -272,3 +279,28 @@ class AdvancedFilterSetTest(TestCase):
             ) & ~models.Q(user=2),
         ).all()
         self.assertEqual(list(expected_tasks), list(tasks))
+
+    def test_get_fields(self) -> None:
+        """Test `get_fields` and `get_regular_fields` methods."""
+        class GetFieldsFilterset(AdvancedFilterSet):
+            class Meta:
+                models = Task
+                fields = {
+                    'user__email': ('exact', 'contains'),
+                    'user__first_name': ('exact', 'contains', 'full_search'),
+                    'user__last_name': ('full_search',),
+                }
+        self.assertEqual(
+            OrderedDict([
+                ('user__email', ['exact', 'contains']),
+                ('user__first_name', ['exact', 'contains']),
+            ]),
+            GetFieldsFilterset.get_fields(),
+        )
+        self.assertEqual(
+            OrderedDict([
+                ('user__first_name', ['full_search']),
+                ('user__last_name', ['full_search']),
+            ]),
+            GetFieldsFilterset.get_special_fields(),
+        )

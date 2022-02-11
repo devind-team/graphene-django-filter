@@ -3,7 +3,8 @@
 Use the `AdvancedFilterSet` class from this module instead of the `FilterSet` from django-filter.
 """
 
-from typing import Any, Dict, List, Optional, Type, Union, cast
+from collections import OrderedDict
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
 
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
@@ -86,6 +87,11 @@ def get_q(queryset: models.QuerySet, filter_obj: Filter, value: Any) -> models.Q
     queryset_proxy = QuerySetProxy(queryset)
     filter_obj.filter(queryset_proxy, value)
     return queryset_proxy.q
+
+
+def is_special_lookup(lookup: str) -> bool:
+    """Determine whether the search must be processed in a special way."""
+    return lookup.split(LOOKUP_SEP)[-1] == 'full_search'
 
 
 class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
@@ -202,3 +208,25 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
             or_q = or_q | self.get_q_for_form(queryset, or_form)
         not_q = ~self.get_q_for_form(queryset, form.not_form) if form.not_form else models.Q()
         return q & and_q & or_q & not_q
+
+    @classmethod
+    def get_fields(cls) -> OrderedDict:
+        """Resolve the `Meta.fields` argument including only regular lookups."""
+        return cls._get_fields(is_special=False)
+
+    @classmethod
+    def get_special_fields(cls) -> OrderedDict:
+        """Resolve the `Meta.fields` argument including only special lookups."""
+        return cls._get_fields(is_special=True)
+
+    @classmethod
+    def _get_fields(cls, is_special: bool) -> OrderedDict:
+        """Resolve the `Meta.fields` argument including special or regular lookups."""
+        all_fields = super().get_fields()
+        regular_fields: List[Tuple[str, List[str]]] = []
+        func = is_special_lookup if is_special else lambda lookup: not is_special_lookup(lookup)
+        for k, v in all_fields.items():
+            regular_field = [lookup for lookup in v if func(lookup)]
+            if len(regular_field):
+                regular_fields.append((k, regular_field))
+        return OrderedDict(regular_fields)
