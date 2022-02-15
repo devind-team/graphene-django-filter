@@ -1,15 +1,28 @@
 """Library settings."""
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Union
 
 from django.conf import settings as django_settings
 from django.db import connection
 from django.test.signals import setting_changed
 from django.utils.translation import gettext_lazy as _
 
-FIXED_SETTINGS = {
-    'ALLOW_FULL_TEXT_SEARCH': connection.vendor == 'postgresql',
-}
+
+def get_fixed_settings() -> Dict[str, bool]:
+    """Return fixed settings."""
+    is_postgresql = connection.vendor == 'postgresql'
+    has_trigram_extension = False
+    if is_postgresql:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM pg_available_extensions WHERE name='pg_trgm'")
+            has_trigram_extension = cursor.fetchone()[0] == 1
+    return {
+        'IS_POSTGRESQL': is_postgresql,
+        'HAS_TRIGRAM_EXTENSION': has_trigram_extension,
+    }
+
+
+FIXED_SETTINGS = get_fixed_settings()
 DEFAULT_SETTINGS = {
     'FILTER_KEY': 'filter',
     'AND_KEY': 'and',
@@ -45,7 +58,7 @@ class Settings:
             self._user_settings = getattr(django_settings, DJANGO_SETTINGS_KEY, {})
         return self._user_settings
 
-    def __getattr__(self, name: str) -> str:
+    def __getattr__(self, name: str) -> Union[str, bool]:
         """Return a setting value."""
         if name not in FIXED_SETTINGS and name not in DEFAULT_SETTINGS:
             raise AttributeError(f'Invalid Graphene setting: `{name}`')
