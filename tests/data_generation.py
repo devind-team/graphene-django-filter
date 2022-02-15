@@ -3,6 +3,7 @@
 from datetime import datetime
 from itertools import count
 
+from django.db import connection
 from django.utils.timezone import make_aware
 from django_seed import Seed
 from django_seed.seeder import Seeder
@@ -12,12 +13,20 @@ from .models import Task, TaskGroup, User
 
 def generate_data() -> None:
     """Generate data for testing."""
+    reset_sequences()
     seeder: Seeder = Seed.seeder()
     generate_users(seeder)
     generate_tasks(seeder)
     generate_task_groups(seeder)
     seeder.execute()
     set_task_groups_tasks()
+
+
+def reset_sequences() -> None:
+    """Reset database sequences."""
+    with connection.cursor() as cursor:
+        for model in (User, Task, TaskGroup):
+            cursor.execute(f'ALTER SEQUENCE {model._meta.db_table}_id_seq RESTART WITH 1;')
 
 
 def generate_users(seeder: Seeder) -> None:

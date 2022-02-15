@@ -9,7 +9,7 @@ class SettingsTests(TestCase):
 
     def test_initial(self) -> None:
         """Test initial settings."""
-        self.assertFalse(conf.settings.ALLOW_FULL_TEXT_SEARCH)
+        self.assertTrue(conf.settings.ALLOW_FULL_TEXT_SEARCH)
         self.assertEqual('filter', conf.settings.FILTER_KEY)
         self.assertEqual('and', conf.settings.AND_KEY)
         self.assertEqual('or', conf.settings.OR_KEY)
