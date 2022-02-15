@@ -23,7 +23,7 @@ from .filtersets import TaskFilter
 from .models import Task, User
 
 
-class UtilsTest(TestCase):
+class UtilsTests(TestCase):
     """Tests for utility functions and classes of the `filterset` module."""
 
     class TaskNameFilterInputType(graphene.InputObjectType):
@@ -44,10 +44,10 @@ class UtilsTest(TestCase):
     class TaskUserFilterInputType(graphene.InputObjectType):
         exact = graphene.String()
         email = graphene.InputField(
-            lambda: UtilsTest.TaskUserEmailFilterInputType,
+            lambda: UtilsTests.TaskUserEmailFilterInputType,
         )
         last_name = graphene.InputField(
-            lambda: UtilsTest.TaskUserLastNameFilterInputType,
+            lambda: UtilsTests.TaskUserLastNameFilterInputType,
         )
 
     class TaskCreatedAtInputType(graphene.InputObjectType):
@@ -60,14 +60,14 @@ class UtilsTest(TestCase):
         'TaskFilterInputType',
         (graphene.InputObjectType,),
         {
-            'name': graphene.InputField(lambda: UtilsTest.TaskNameFilterInputType),
-            'description': graphene.InputField(lambda: UtilsTest.TaskDescriptionFilterInputType),
-            'user': graphene.InputField(lambda: UtilsTest.TaskUserFilterInputType),
-            'created_at': graphene.InputField(lambda: UtilsTest.TaskCreatedAtInputType),
-            'completed_at': graphene.InputField(lambda: UtilsTest.TaskCompletedAtInputType),
-            'and': graphene.InputField(graphene.List(lambda: UtilsTest.TaskFilterInputType)),
-            'or': graphene.InputField(graphene.List(lambda: UtilsTest.TaskFilterInputType)),
-            'not': graphene.InputField(lambda: UtilsTest.TaskFilterInputType),
+            'name': graphene.InputField(lambda: UtilsTests.TaskNameFilterInputType),
+            'description': graphene.InputField(lambda: UtilsTests.TaskDescriptionFilterInputType),
+            'user': graphene.InputField(lambda: UtilsTests.TaskUserFilterInputType),
+            'created_at': graphene.InputField(lambda: UtilsTests.TaskCreatedAtInputType),
+            'completed_at': graphene.InputField(lambda: UtilsTests.TaskCompletedAtInputType),
+            'and': graphene.InputField(graphene.List(lambda: UtilsTests.TaskFilterInputType)),
+            'or': graphene.InputField(graphene.List(lambda: UtilsTests.TaskFilterInputType)),
+            'not': graphene.InputField(lambda: UtilsTests.TaskFilterInputType),
         },
     )
 
@@ -149,7 +149,7 @@ class UtilsTest(TestCase):
         self.assertTrue(is_special_lookup('name__full_search'))
 
 
-class AdvancedFilterSetTest(TestCase):
+class AdvancedFilterSetTests(TestCase):
     """`AdvancedFilterSetTest` class tests."""
 
     class FindFilterFilterSet(AdvancedFilterSet):
@@ -252,7 +252,7 @@ class AdvancedFilterSetTest(TestCase):
 
     def test_find_filter(self) -> None:
         """Test the `find_filter` method."""
-        filterset = AdvancedFilterSetTest.FindFilterFilterSet()
+        filterset = AdvancedFilterSetTests.FindFilterFilterSet()
         email_filter = filterset.find_filter('email')
         self.assertEqual(email_filter.field_name, 'email')
         self.assertEqual(email_filter.lookup_expr, 'exact')

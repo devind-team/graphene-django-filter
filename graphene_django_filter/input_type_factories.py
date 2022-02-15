@@ -6,12 +6,14 @@ import graphene
 from anytree import Node
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
+from django.utils.text import format_lazy
 from django_filters import Filter
-from django_filters.conf import settings
+from django_filters.conf import settings as django_settings
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
 from stringcase import pascalcase
 
+from .conf import settings
 from .filterset import AdvancedFilterSet
 
 
@@ -24,12 +26,12 @@ def get_filtering_args_from_filterset(
     These arguments will be available to filter against in the GraphQL.
     """
     return {
-        'filter': graphene.Argument(
+        settings.FILTER_KEY: graphene.Argument(
             create_filter_input_type(
                 filterset_to_trees(filterset_class),
                 filterset_class,
                 node_type.__name__.replace('Type', ''),
-            ), description='Advanced filter field',
+            ), description=settings.MESSAGES['FILTER_DESCRIPTION'],
         ),
     }
 
@@ -49,19 +51,25 @@ def create_filter_input_type(
                 **{
                     root.name: graphene.InputField(
                         create_filter_input_subtype(root, filterset_class, type_name),
-                        description=f'`{pascalcase(root.name)}` field',
+                        description=format_lazy(
+                            settings.MESSAGES['FIELD_DESCRIPTION'],
+                            field=pascalcase(root.name),
+                        ),
                     )
                     for root in roots
                 },
-                'and': graphene.InputField(
+                settings.AND_KEY: graphene.InputField(
                     graphene.List(lambda: input_type),
-                    description='`And` field',
+                    description=settings.MESSAGES['AND_DESCRIPTION'],
                 ),
-                'or': graphene.InputField(
+                settings.OR_KEY: graphene.InputField(
                     graphene.List(lambda: input_type),
-                    description='`Or` field',
+                    description=settings.MESSAGES['OR_DESCRIPTION'],
                 ),
-                'not': graphene.InputField(lambda: input_type, description='`Not` field'),
+                settings.NOT_KEY: graphene.InputField(
+                    lambda: input_type,
+                    description=settings.MESSAGES['NOT_DESCRIPTION'],
+                ),
             },
         ),
     )
@@ -78,7 +86,7 @@ def create_filter_input_subtype(
     for child in root.children:
         if child.height == 0:
             filter_name = f'{LOOKUP_SEP}'.join(
-                node.name for node in child.path if node.name != settings.DEFAULT_LOOKUP_EXPR
+                node.name for node in child.path if node.name != django_settings.DEFAULT_LOOKUP_EXPR
             )
             fields[child.name] = get_field(
                 filterset_class,
@@ -92,7 +100,10 @@ def create_filter_input_subtype(
                     filterset_class,
                     prefix + pascalcase(root.name),
                 ),
-                description=f'`{pascalcase(child.name)}` subfield',
+                description=format_lazy(
+                    settings.MESSAGES['SUBFIELD_DESCRIPTION'],
+                    subfield=pascalcase(child.name),
+                ),
             )
     return create_input_object_type(
         f'{prefix}{pascalcase(root.name)}FilterInputType',
@@ -140,8 +151,10 @@ def get_field(
     if filter_type in ('in', 'range'):
         field = graphene.List(field.get_type())
     field_type = field.InputField()
-    field_type.description = getattr(filter_field, 'label') or \
-        f'`{pascalcase(filter_field.lookup_expr)}` lookup'
+    field_type.description = getattr(filter_field, 'label') or format_lazy(
+        settings.MESSAGES['LOOKUP_DESCRIPTION'],
+        lookup=pascalcase(filter_field.lookup_expr),
+    )
     return field_type
 
 

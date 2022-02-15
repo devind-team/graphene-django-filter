@@ -14,6 +14,7 @@ INSTALLED_APPS = (
     'django.contrib.auth',
     'django_filters',
     'django_seed',
+    'graphene_django_filter',
     'tests',
 )
 

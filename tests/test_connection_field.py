@@ -16,7 +16,7 @@ from .object_types import TaskFilterSetClassType
 from .schema import schema
 
 
-class AdvancedDjangoFilterConnectionFieldTest(TestCase):
+class AdvancedDjangoFilterConnectionFieldTests(TestCase):
     """`AdvancedDjangoFilterConnectionField` class tests."""
 
     users_query = """
