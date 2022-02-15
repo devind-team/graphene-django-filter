@@ -4,6 +4,8 @@ per-file-ignores =
     __init__.py:F401
     connection_field.py:A002
     test_filterset.py:N802
+    filters.py:A003
+    0001_initial.py:D100,D101,D104
 ignore = ANN002,ANN003,ANN101,ANN102,D106,D107
 
 import-order-style = pycharm

@@ -105,10 +105,10 @@ class AdvancedDjangoFilterConnectionFieldTests(TestCase):
     @staticmethod
     def get_ids(execution_result: ExecutionResult, key: str) -> List[int]:
         """Return identifiers from an execution result using a key."""
-        return [
+        return sorted(
             int(from_global_id(edge['node']['id'])[1]) for edge
             in execution_result.data[key]['edges']
-        ]
+        )
 
     def test_init(self) -> None:
         """Test the `__init__` method."""
