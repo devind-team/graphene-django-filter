@@ -41,30 +41,32 @@ class AnnotatedFilter(Filter):
 
 
 class SearchQueryFilter(AnnotatedFilter):
-    """Full text search filter using the SearchVector and SearchQuery object."""
+    """Full text search filter using the `SearchVector` and `SearchQuery` object."""
 
     class Value(NamedTuple):
         annotate_value: SearchVector
         search_value: SearchQuery
 
     postfix = 'search_query'
+    available_lookups = ('exact',)
 
     def filter(self, qs: models.QuerySet, value: Value) -> models.QuerySet:
-        """Filter a QuerySet using the SearchVector and SearchQuery object."""
+        """Filter a QuerySet using the `SearchVector` and `SearchQuery` object."""
         return super().filter(qs, value)
 
 
 class SearchRankFilter(AnnotatedFilter):
-    """Full text search filter using the SearchRank object."""
+    """Full text search filter using the `SearchRank` object."""
 
     class Value(NamedTuple):
         annotate_value: SearchRank
         search_value: float
 
     postfix = 'search_rank'
+    available_lookups = ('exact', 'gt', 'gte', 'lt', 'lte')
 
     def filter(self, qs: models.QuerySet, value: Value) -> models.QuerySet:
-        """Filter a QuerySet using the SearchRank object."""
+        """Filter a QuerySet using the `SearchRank` object."""
         return super().filter(qs, value)
 
 
@@ -75,7 +77,8 @@ class TrigramFilter(AnnotatedFilter):
         annotate_value: Union[TrigramSimilarity, TrigramDistance]
         search_value: float
 
-    posix = 'trigram'
+    postfix = 'trigram'
+    available_lookups = ('exact', 'gt', 'gte', 'lt', 'lte')
 
     def filter(self, qs: models.QuerySet, value: Value) -> models.QuerySet:
         """Filter a QuerySet using similarity or distance of trigram."""
