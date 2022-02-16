@@ -62,10 +62,10 @@ class Settings:
         """Return a setting value."""
         if name not in FIXED_SETTINGS and name not in DEFAULT_SETTINGS:
             raise AttributeError(f'Invalid Graphene setting: `{name}`')
-        if name in self.user_settings:
-            return self.user_settings[name]
-        elif name in FIXED_SETTINGS:
+        if name in FIXED_SETTINGS:
             return FIXED_SETTINGS[name]
+        elif name in self.user_settings:
+            return self.user_settings[name]
         else:
             return DEFAULT_SETTINGS[name]
 
