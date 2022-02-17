@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from contextlib import ExitStack
 from datetime import datetime, timedelta
-from typing import List, NamedTuple
+from typing import List
 from unittest.mock import MagicMock, patch
 
 import graphene
@@ -15,9 +15,9 @@ from graphene_django_filter.filters import SearchQueryFilter, SearchRankFilter, 
 from graphene_django_filter.filterset import (
     AdvancedFilterSet,
     QuerySetProxy,
-    get_full_text_search_filter_classes,
     get_q,
-    is_special_lookup_expr,
+    is_full_text_search_lookup_expr,
+    is_regular_lookup_expr,
     tree_input_type_to_data,
 )
 
@@ -146,34 +146,15 @@ class UtilsTests(TestCase):
         q = get_q(queryset, filter_obj, 'John')
         self.assertEqual(models.Q(first_name__exact='John'), q)
 
-    def test_is_special_lookup(self) -> None:
-        """Test the `is_special_lookup` function."""
-        self.assertFalse(is_special_lookup_expr('name__exact'))
-        self.assertTrue(is_special_lookup_expr('name__full_text_search'))
+    def test_is_full_text_search_lookup(self) -> None:
+        """Test the `is_full_text_search_lookup` function."""
+        self.assertFalse(is_full_text_search_lookup_expr('name__exact'))
+        self.assertTrue(is_full_text_search_lookup_expr('name__full_text_search'))
 
-    def test_get_full_text_search_filter_classes(self) -> None:
-        """Test the `get_full_text_search_filter_classes` function."""
-        class SubTest(NamedTuple):
-            is_postgresql: bool
-            has_trigram_extension: bool
-            classes: tuple
-            warning: bool
-        subtests = (
-            SubTest(False, False, (), True),
-            SubTest(True, False, (SearchQueryFilter, SearchRankFilter), True),
-            SubTest(True, True, (SearchQueryFilter, SearchRankFilter, TrigramFilter), False),
-        )
-        for subtest in subtests:
-            with self.subTest(subtest=subtest), patch(
-                'graphene_django_filter.conf.FIXED_SETTINGS',
-                new={
-                    'IS_POSTGRESQL': subtest.is_postgresql,
-                    'HAS_TRIGRAM_EXTENSION': subtest.has_trigram_extension,
-                },
-            ):
-                if subtest.warning:
-                    with self.assertWarns(UserWarning):
-                        self.assertEqual(subtest.classes, get_full_text_search_filter_classes())
+    def test_is_regular_lookup(self) -> None:
+        """Test the `is_regular_lookup` function."""
+        self.assertTrue(is_regular_lookup_expr('name__exact'))
+        self.assertFalse(is_regular_lookup_expr('name__full_text_search'))
 
 
 class AdvancedFilterSetTests(TestCase):
@@ -214,6 +195,68 @@ class AdvancedFilterSetTests(TestCase):
                 'user__first_name': ('exact', 'contains', 'full_text_search'),
                 'user__last_name': ('full_text_search',),
             }
+
+    expected_regular_filters = [
+        ('user__email', CharFilter(field_name='user__email', lookup_expr='exact')),
+        ('user__email__contains', CharFilter(field_name='user__email', lookup_expr='contains')),
+        ('user__first_name', CharFilter(field_name='user__first_name', lookup_expr='exact')),
+        (
+            'user__first_name__contains',
+            CharFilter(field_name='user__first_name', lookup_expr='contains'),
+        ),
+    ]
+    expected_search_query_filters = [
+        ('search_query', SearchQueryFilter(field_name='search_query', lookup_expr='exact')),
+    ]
+    expected_search_rank_filters = [
+        ('search_rank', SearchRankFilter(field_name='search_rank', lookup_expr='exact')),
+        ('search_rank__gt', SearchRankFilter(field_name='search_rank', lookup_expr='gt')),
+        ('search_rank__gte', SearchRankFilter(field_name='search_rank', lookup_expr='gte')),
+        ('search_rank__lt', SearchRankFilter(field_name='search_rank', lookup_expr='lt')),
+        ('search_rank__lte', SearchRankFilter(field_name='search_rank', lookup_expr='lte')),
+    ]
+    expected_trigram_filters = [
+        (
+            'user__first_name__trigram',
+            TrigramFilter(field_name='user__first_name__trigram', lookup_expr='exact'),
+        ),
+        (
+            'user__first_name__trigram__gt',
+            TrigramFilter(field_name='user__first_name__trigram', lookup_expr='gt'),
+        ),
+        (
+            'user__first_name__trigram__gte',
+            TrigramFilter(field_name='user__first_name__trigram', lookup_expr='gte'),
+        ),
+        (
+            'user__first_name__trigram__lt',
+            TrigramFilter(field_name='user__first_name__trigram', lookup_expr='lt'),
+        ),
+        (
+            'user__first_name__trigram__lte',
+            TrigramFilter(field_name='user__first_name__trigram', lookup_expr='lte'),
+        ),
+        (
+            'user__last_name__trigram',
+            TrigramFilter(field_name='user__last_name__trigram', lookup_expr='exact'),
+        ),
+        (
+            'user__last_name__trigram__gt',
+            TrigramFilter(field_name='user__last_name__trigram', lookup_expr='gt'),
+        ),
+        (
+            'user__last_name__trigram__gte',
+            TrigramFilter(field_name='user__last_name__trigram', lookup_expr='gte'),
+        ),
+        (
+            'user__last_name__trigram__lt',
+            TrigramFilter(field_name='user__last_name__trigram', lookup_expr='lt'),
+        ),
+        (
+            'user__last_name__trigram__lte',
+            TrigramFilter(field_name='user__last_name__trigram', lookup_expr='lte'),
+        ),
+    ]
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -326,7 +369,7 @@ class AdvancedFilterSetTests(TestCase):
         self.assertEqual(list(expected_tasks), list(tasks))
 
     def test_get_fields(self) -> None:
-        """Test `get_fields` and `get_regular_fields` methods."""
+        """Test `get_fields` and `get_full_text_search_fields` methods."""
         self.assertEqual(
             OrderedDict([
                 ('user__email', ['exact', 'contains']),
@@ -339,58 +382,98 @@ class AdvancedFilterSetTests(TestCase):
                 ('user__first_name', ['full_text_search']),
                 ('user__last_name', ['full_text_search']),
             ]),
-            self.FullTextSearchFilterSet.get_special_fields(),
+            self.FullTextSearchFilterSet.get_full_text_search_fields(),
         )
 
-    def test_create_full_text_search_filters(self) -> None:
-        """Test the `create_full_text_search_filters` method."""
-        base_filters = OrderedDict([
-            ('name__search_query', MagicMock()),
-            ('name__trigram__gt', MagicMock()),
-        ])
-        filters = AdvancedFilterSet.create_full_text_search_filters(base_filters, 'name')
+    def test_create_special_filters_without_field_name(self) -> None:
+        """Test the `create_special_filters` method without the `field_name` parameter."""
+        base_filters = OrderedDict([('search_rank__gt', MagicMock())])
+        filters = AdvancedFilterSet.create_special_filters(base_filters, SearchRankFilter)
         expected_filters = [
-            ('name__search_rank', SearchRankFilter(field_name='name', lookup_expr='exact')),
-            ('name__search_rank__gt', SearchRankFilter(field_name='name', lookup_expr='gt')),
-            ('name__search_rank__gte', SearchRankFilter(field_name='name', lookup_expr='gte')),
-            ('name__search_rank__lt', SearchRankFilter(field_name='name', lookup_expr='lt')),
-            ('name__search_rank__lte', SearchRankFilter(field_name='name', lookup_expr='lte')),
-            ('name__trigram', TrigramFilter(field_name='name', lookup_expr='exact')),
-            ('name__trigram__gte', TrigramFilter(field_name='name', lookup_expr='gte')),
-            ('name__trigram__lt', TrigramFilter(field_name='name', lookup_expr='lt')),
-            ('name__trigram__lte', TrigramFilter(field_name='name', lookup_expr='lte')),
+            ('search_rank', SearchRankFilter(field_name='search_rank', lookup_expr='exact')),
+            ('search_rank__gte', SearchRankFilter(field_name='search_rank', lookup_expr='gte')),
+            ('search_rank__lt', SearchRankFilter(field_name='search_rank', lookup_expr='lt')),
+            ('search_rank__lte', SearchRankFilter(field_name='search_rank', lookup_expr='lte')),
+        ]
+        self.assertFiltersEqual(expected_filters, filters.items())
+
+    def test_create_special_filters_with_field_name(self) -> None:
+        """Test the `create_special_filters` method with the `field_name` parameter."""
+        base_filters = OrderedDict([('name__trigram__gt', MagicMock())])
+        filters = AdvancedFilterSet.create_special_filters(base_filters, TrigramFilter, 'name')
+        expected_filters = [
+            ('name__trigram', TrigramFilter(field_name='name__trigram', lookup_expr='exact')),
+            ('name__trigram__gte', TrigramFilter(field_name='name__trigram', lookup_expr='gte')),
+            ('name__trigram__lt', TrigramFilter(field_name='name__trigram', lookup_expr='lt')),
+            ('name__trigram__lte', TrigramFilter(field_name='name__trigram', lookup_expr='lte')),
+        ]
+        self.assertFiltersEqual(expected_filters, filters.items())
+
+    @patch.object(
+        AdvancedFilterSet,
+        'get_full_text_search_fields',
+        new=MagicMock(return_value=OrderedDict()),
+    )
+    def test_create_full_text_search_filters_without_fields(self) -> None:
+        """Test the `create_full_text_search_filters` method without full text search fields."""
+        base_filters = OrderedDict()
+        filters = self.FullTextSearchFilterSet.create_full_text_search_filters(base_filters)
+        expected_filters = []
+        self.assertFiltersEqual(expected_filters, filters.items())
+
+    @patch(
+        'graphene_django_filter.conf.FIXED_SETTINGS', new={
+            'IS_POSTGRESQL': False,
+            'HAS_TRIGRAM_EXTENSION': False,
+        },
+    )
+    def test_create_full_text_search_filters_without_postgresql(self) -> None:
+        """Test the `create_full_text_search_filters` method if the database is not PostgreSQL."""
+        base_filters = OrderedDict()
+        with self.assertWarns(UserWarning):
+            filters = self.FullTextSearchFilterSet.create_full_text_search_filters(base_filters)
+        expected_filters = []
+        self.assertFiltersEqual(expected_filters, filters.items())
+
+    @patch(
+        'graphene_django_filter.conf.FIXED_SETTINGS', new={
+            'IS_POSTGRESQL': True,
+            'HAS_TRIGRAM_EXTENSION': False,
+        },
+    )
+    def test_create_full_text_search_filters_without_trigrams(self) -> None:
+        """Test the `create_full_text_search_filters` method.
+
+        The database has not `pg_trgm` extension.
+        """
+        base_filters = OrderedDict()
+        with self.assertWarns(UserWarning):
+            filters = self.FullTextSearchFilterSet.create_full_text_search_filters(base_filters)
+        expected_filters = [
+            *self.expected_search_query_filters,
+            *self.expected_search_rank_filters,
+        ]
+        self.assertFiltersEqual(expected_filters, filters.items())
+
+    def test_create_full_text_search_filter(self) -> None:
+        """Test the `create_full_text_search_filters` method with all filters."""
+        base_filters = OrderedDict(
+            [('search_query', SearchQueryFilter(field_name='', lookup_expr='exact'))],
+        )
+        filters = self.FullTextSearchFilterSet.create_full_text_search_filters(base_filters)
+        expected_filters = [
+            *self.expected_search_rank_filters,
+            *self.expected_trigram_filters,
         ]
         self.assertFiltersEqual(expected_filters, filters.items())
 
     def test_get_filters(self) -> None:
         """Test the `get_filters` method."""
-        with patch('graphene_django_filter.filterset.get_full_text_search_filter_classes') as mock:
-            mock.return_value = (SearchQueryFilter,)
-            filters = self.FullTextSearchFilterSet.get_filters()
-            expected_filters = [
-                (
-                    'user__email',
-                    CharFilter(field_name='user__email', lookup_expr='exact'),
-                ),
-                (
-                    'user__email__contains',
-                    CharFilter(field_name='user__email', lookup_expr='contains'),
-                ),
-                (
-                    'user__first_name',
-                    CharFilter(field_name='user__first_name', lookup_expr='exact'),
-                ),
-                (
-                    'user__first_name__contains',
-                    CharFilter(field_name='user__first_name', lookup_expr='contains'),
-                ),
-                (
-                    'user__first_name__search_query',
-                    SearchQueryFilter(field_name='user__first_name', lookup_expr='exact'),
-                ),
-                (
-                    'user__last_name__search_query',
-                    SearchQueryFilter(field_name='user__last_name', lookup_expr='exact'),
-                ),
-            ]
-            self.assertFiltersEqual(expected_filters, filters.items())
+        filters = self.FullTextSearchFilterSet.get_filters()
+        expected_filters = [
+            *self.expected_regular_filters,
+            *self.expected_search_query_filters,
+            *self.expected_search_rank_filters,
+            *self.expected_trigram_filters,
+        ]
+        self.assertFiltersEqual(expected_filters, filters.items())
