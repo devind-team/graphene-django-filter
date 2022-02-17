@@ -3,18 +3,21 @@
 Use the `AdvancedFilterSet` class from this module instead of the `FilterSet` from django-filter.
 """
 
+import warnings
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, cast
 
-from django.db import models
+from django.db import connection, models
 from django.db.models.constants import LOOKUP_SEP
 from django.forms import Form
 from django.forms.utils import ErrorDict
 from django_filters import Filter
-from django_filters.conf import settings
+from django_filters.conf import settings as django_settings
 from django_filters.filterset import BaseFilterSet, FilterSetMetaclass
 from graphene.types.inputobjecttype import InputObjectTypeContainer
 from wrapt import ObjectProxy
+
+from .conf import settings
 
 
 def tree_input_type_to_data(
@@ -30,7 +33,7 @@ def tree_input_type_to_data(
             result[key] = tree_input_type_to_data(value)
         else:
             k = (prefix + LOOKUP_SEP + key if prefix else key).replace(
-                LOOKUP_SEP + settings.DEFAULT_LOOKUP_EXPR, '',
+                LOOKUP_SEP + django_settings.DEFAULT_LOOKUP_EXPR, '',
             )
             if isinstance(value, InputObjectTypeContainer):
                 result.update(tree_input_type_to_data(value, k))
@@ -89,9 +92,28 @@ def get_q(queryset: models.QuerySet, filter_obj: Filter, value: Any) -> models.Q
     return queryset_proxy.q
 
 
-def is_special_lookup(lookup: str) -> bool:
-    """Determine whether the search must be processed in a special way."""
-    return lookup.split(LOOKUP_SEP)[-1] == 'full_search'
+def is_special_lookup_expr(lookup_expr: str) -> bool:
+    """Determine whether the lookup_expr must be processed in a special way."""
+    return lookup_expr.split(LOOKUP_SEP)[-1] == 'full_text_search'
+
+
+def get_full_text_search_filter_classes() -> Iterable[Type[Union[Filter, Any]]]:
+    """Return available full text search filter classes."""
+    if not settings.IS_POSTGRESQL:
+        warnings.warn(
+            f'Full text search is not available because the {connection.vendor} vendor is '
+            'used instead of the postgresql vendor.',
+        )
+        return ()
+    elif not settings.HAS_TRIGRAM_EXTENSION:
+        from .filters import SearchQueryFilter, SearchRankFilter
+        warnings.warn(
+            'Trigram search is not available because the `pg_trgm` extension is not installed.',
+        )
+        return SearchQueryFilter, SearchRankFilter,
+    else:
+        from .filters import SearchQueryFilter, SearchRankFilter, TrigramFilter
+        return SearchQueryFilter, SearchRankFilter, TrigramFilter
 
 
 class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
@@ -179,8 +201,8 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         if LOOKUP_SEP in data_key:
             field_name, lookup_expr = data_key.rsplit(LOOKUP_SEP, 1)
         else:
-            field_name, lookup_expr = data_key, settings.DEFAULT_LOOKUP_EXPR
-        key = field_name if lookup_expr == settings.DEFAULT_LOOKUP_EXPR else data_key
+            field_name, lookup_expr = data_key, django_settings.DEFAULT_LOOKUP_EXPR
+        key = field_name if lookup_expr == django_settings.DEFAULT_LOOKUP_EXPR else data_key
         if key in self.filters:
             return self.filters[key]
         for filter_value in self.filters.values():
@@ -220,11 +242,51 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         return cls._get_fields(is_special=True)
 
     @classmethod
+    def create_full_text_search_filters(
+        cls,
+        base_filters: OrderedDict,
+        field_name: str,
+    ) -> OrderedDict:
+        """Create available full text search filters."""
+        full_text_search_filters = OrderedDict()
+        for filter_class in get_full_text_search_filter_classes():
+            for lookup_expr in filter_class.available_lookups:
+                filter_name = cls.get_filter_name(
+                    f'{field_name}{LOOKUP_SEP}{filter_class.postfix}',
+                    lookup_expr,
+                )
+                if filter_name not in base_filters:
+                    full_text_search_filters[filter_name] = filter_class(
+                        field_name=field_name,
+                        lookup_expr=lookup_expr,
+                    )
+        return full_text_search_filters
+
+    @classmethod
+    def get_filters(cls) -> OrderedDict:
+        """Get all filters for the filterset.
+
+        This is the combination of declared and generated filters.
+        """
+        filters = super().get_filters()
+        if not cls._meta.model:
+            return filters
+        for field_name, lookups in cls.get_special_fields().items():
+            for lookup_expr in lookups:
+                if lookup_expr == 'full_text_search':
+                    filters = OrderedDict([
+                        *filters.items(),
+                        *cls.create_full_text_search_filters(filters, field_name).items(),
+                    ])
+        return filters
+
+    @classmethod
     def _get_fields(cls, is_special: bool) -> OrderedDict:
         """Resolve the `Meta.fields` argument including special or regular lookups."""
         all_fields = super().get_fields()
         regular_fields: List[Tuple[str, List[str]]] = []
-        func = is_special_lookup if is_special else lambda lookup: not is_special_lookup(lookup)
+        func = is_special_lookup_expr if is_special else \
+            lambda lookup_expr: not is_special_lookup_expr(lookup_expr)
         for k, v in all_fields.items():
             regular_field = [lookup for lookup in v if func(lookup)]
             if len(regular_field):

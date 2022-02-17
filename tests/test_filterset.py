@@ -3,18 +3,21 @@
 from collections import OrderedDict
 from contextlib import ExitStack
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from typing import List, NamedTuple
+from unittest.mock import MagicMock, patch
 
-import django_filters
 import graphene
 from django.db import models
 from django.test import TestCase
 from django.utils.timezone import make_aware
+from django_filters import CharFilter, Filter
+from graphene_django_filter.filters import SearchQueryFilter, SearchRankFilter, TrigramFilter
 from graphene_django_filter.filterset import (
     AdvancedFilterSet,
     QuerySetProxy,
+    get_full_text_search_filter_classes,
     get_q,
-    is_special_lookup,
+    is_special_lookup_expr,
     tree_input_type_to_data,
 )
 
@@ -139,21 +142,45 @@ class UtilsTests(TestCase):
     def test_get_q(self) -> None:
         """Test the `test_get_q` function."""
         queryset = User.objects.all()
-        filter_obj = django_filters.Filter(field_name='first_name', lookup_expr='exact')
+        filter_obj = Filter(field_name='first_name', lookup_expr='exact')
         q = get_q(queryset, filter_obj, 'John')
         self.assertEqual(models.Q(first_name__exact='John'), q)
 
     def test_is_special_lookup(self) -> None:
         """Test the `is_special_lookup` function."""
-        self.assertFalse(is_special_lookup('name__exact'))
-        self.assertTrue(is_special_lookup('name__full_search'))
+        self.assertFalse(is_special_lookup_expr('name__exact'))
+        self.assertTrue(is_special_lookup_expr('name__full_text_search'))
+
+    def test_get_full_text_search_filter_classes(self) -> None:
+        """Test the `get_full_text_search_filter_classes` function."""
+        class SubTest(NamedTuple):
+            is_postgresql: bool
+            has_trigram_extension: bool
+            classes: tuple
+            warning: bool
+        subtests = (
+            SubTest(False, False, (), True),
+            SubTest(True, False, (SearchQueryFilter, SearchRankFilter), True),
+            SubTest(True, True, (SearchQueryFilter, SearchRankFilter, TrigramFilter), False),
+        )
+        for subtest in subtests:
+            with self.subTest(subtest=subtest), patch(
+                'graphene_django_filter.conf.FIXED_SETTINGS',
+                new={
+                    'IS_POSTGRESQL': subtest.is_postgresql,
+                    'HAS_TRIGRAM_EXTENSION': subtest.has_trigram_extension,
+                },
+            ):
+                if subtest.warning:
+                    with self.assertWarns(UserWarning):
+                        self.assertEqual(subtest.classes, get_full_text_search_filter_classes())
 
 
 class AdvancedFilterSetTests(TestCase):
     """`AdvancedFilterSetTest` class tests."""
 
     class FindFilterFilterSet(AdvancedFilterSet):
-        in_last_name = django_filters.CharFilter(field_name='last_name', lookup_expr='contains')
+        in_last_name = CharFilter(field_name='last_name', lookup_expr='contains')
 
         class Meta:
             model = User
@@ -179,11 +206,29 @@ class AdvancedFilterSetTests(TestCase):
         },
     }
 
+    class FullTextSearchFilterSet(AdvancedFilterSet):
+        class Meta:
+            model = Task
+            fields = {
+                'user__email': ('exact', 'contains'),
+                'user__first_name': ('exact', 'contains', 'full_text_search'),
+                'user__last_name': ('full_text_search',),
+            }
+
     @classmethod
     def setUpClass(cls) -> None:
         """Set up `AdvancedFilterSetTest` class tests."""
         super().setUpClass()
         generate_data()
+
+    def assertFiltersEqual(self, first: List[tuple], second: List[tuple]) -> None:
+        """Fail if the two filter lists unequal."""
+        self.assertEqual(len(first), len(second))
+        for expected, actual in zip(first, second):
+            self.assertEqual(expected[0], actual[0])
+            self.assertEqual(type(expected[1]), type(actual[1]))
+            self.assertEqual(expected[1].field_name, actual[1].field_name)
+            self.assertEqual(expected[1].lookup_expr, actual[1].lookup_expr)
 
     def test_get_form_class(self) -> None:
         """Test getting a tree form class with the `get_form_class` method."""
@@ -282,25 +327,70 @@ class AdvancedFilterSetTests(TestCase):
 
     def test_get_fields(self) -> None:
         """Test `get_fields` and `get_regular_fields` methods."""
-        class GetFieldsFilterset(AdvancedFilterSet):
-            class Meta:
-                models = Task
-                fields = {
-                    'user__email': ('exact', 'contains'),
-                    'user__first_name': ('exact', 'contains', 'full_search'),
-                    'user__last_name': ('full_search',),
-                }
         self.assertEqual(
             OrderedDict([
                 ('user__email', ['exact', 'contains']),
                 ('user__first_name', ['exact', 'contains']),
             ]),
-            GetFieldsFilterset.get_fields(),
+            self.FullTextSearchFilterSet.get_fields(),
         )
         self.assertEqual(
             OrderedDict([
-                ('user__first_name', ['full_search']),
-                ('user__last_name', ['full_search']),
+                ('user__first_name', ['full_text_search']),
+                ('user__last_name', ['full_text_search']),
             ]),
-            GetFieldsFilterset.get_special_fields(),
+            self.FullTextSearchFilterSet.get_special_fields(),
         )
+
+    def test_create_full_text_search_filters(self) -> None:
+        """Test the `create_full_text_search_filters` method."""
+        base_filters = OrderedDict([
+            ('name__search_query', MagicMock()),
+            ('name__trigram__gt', MagicMock()),
+        ])
+        filters = AdvancedFilterSet.create_full_text_search_filters(base_filters, 'name')
+        expected_filters = [
+            ('name__search_rank', SearchRankFilter(field_name='name', lookup_expr='exact')),
+            ('name__search_rank__gt', SearchRankFilter(field_name='name', lookup_expr='gt')),
+            ('name__search_rank__gte', SearchRankFilter(field_name='name', lookup_expr='gte')),
+            ('name__search_rank__lt', SearchRankFilter(field_name='name', lookup_expr='lt')),
+            ('name__search_rank__lte', SearchRankFilter(field_name='name', lookup_expr='lte')),
+            ('name__trigram', TrigramFilter(field_name='name', lookup_expr='exact')),
+            ('name__trigram__gte', TrigramFilter(field_name='name', lookup_expr='gte')),
+            ('name__trigram__lt', TrigramFilter(field_name='name', lookup_expr='lt')),
+            ('name__trigram__lte', TrigramFilter(field_name='name', lookup_expr='lte')),
+        ]
+        self.assertFiltersEqual(expected_filters, filters.items())
+
+    def test_get_filters(self) -> None:
+        """Test the `get_filters` method."""
+        with patch('graphene_django_filter.filterset.get_full_text_search_filter_classes') as mock:
+            mock.return_value = (SearchQueryFilter,)
+            filters = self.FullTextSearchFilterSet.get_filters()
+            expected_filters = [
+                (
+                    'user__email',
+                    CharFilter(field_name='user__email', lookup_expr='exact'),
+                ),
+                (
+                    'user__email__contains',
+                    CharFilter(field_name='user__email', lookup_expr='contains'),
+                ),
+                (
+                    'user__first_name',
+                    CharFilter(field_name='user__first_name', lookup_expr='exact'),
+                ),
+                (
+                    'user__first_name__contains',
+                    CharFilter(field_name='user__first_name', lookup_expr='contains'),
+                ),
+                (
+                    'user__first_name__search_query',
+                    SearchQueryFilter(field_name='user__first_name', lookup_expr='exact'),
+                ),
+                (
+                    'user__last_name__search_query',
+                    SearchQueryFilter(field_name='user__last_name', lookup_expr='exact'),
+                ),
+            ]
+            self.assertFiltersEqual(expected_filters, filters.items())
