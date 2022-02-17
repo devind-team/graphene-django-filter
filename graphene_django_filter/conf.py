@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional, Union
 from django.conf import settings as django_settings
 from django.db import connection
 from django.test.signals import setting_changed
-from django.utils.translation import gettext_lazy as _
 
 
 def get_fixed_settings() -> Dict[str, bool]:
@@ -28,15 +27,6 @@ DEFAULT_SETTINGS = {
     'AND_KEY': 'and',
     'OR_KEY': 'or',
     'NOT_KEY': 'not',
-    'MESSAGES': {
-        'FILTER_DESCRIPTION': _('FILTER_DESCRIPTION'),
-        'AND_DESCRIPTION': _('AND_DESCRIPTION'),
-        'OR_DESCRIPTION': _('OR_DESCRIPTION'),
-        'NOT_DESCRIPTION': _('NOT_DESCRIPTION'),
-        'FIELD_DESCRIPTION': _('FIELD_DESCRIPTION'),
-        'SUBFIELD_DESCRIPTION': _('SUBFIELD_DESCRIPTION'),
-        'LOOKUP_DESCRIPTION': _('LOOKUP_DESCRIPTION'),
-    },
 }
 DJANGO_SETTINGS_KEY = 'GRAPHENE_DJANGO_FILTER'
 

@@ -15,7 +15,6 @@ class SettingsTests(TestCase):
         self.assertEqual('and', conf.settings.AND_KEY)
         self.assertEqual('or', conf.settings.OR_KEY)
         self.assertEqual('not', conf.settings.NOT_KEY)
-        self.assertIsInstance(conf.settings.MESSAGES, dict)
 
     def test_overridden(self) -> None:
         """Test overridden settings."""

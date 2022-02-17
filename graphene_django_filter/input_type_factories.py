@@ -6,7 +6,6 @@ import graphene
 from anytree import Node
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
-from django.utils.text import format_lazy
 from django_filters import Filter
 from django_filters.conf import settings as django_settings
 from graphene_django.filter.utils import get_model_field
@@ -31,7 +30,7 @@ def get_filtering_args_from_filterset(
                 filterset_to_trees(filterset_class),
                 filterset_class,
                 node_type.__name__.replace('Type', ''),
-            ), description=settings.MESSAGES['FILTER_DESCRIPTION'],
+            ), description='Advanced filter field',
         ),
     }
 
@@ -51,24 +50,21 @@ def create_filter_input_type(
                 **{
                     root.name: graphene.InputField(
                         create_filter_input_subtype(root, filterset_class, type_name),
-                        description=format_lazy(
-                            settings.MESSAGES['FIELD_DESCRIPTION'],
-                            field=pascalcase(root.name),
-                        ),
+                        description=f'`{pascalcase(root.name)}` field',
                     )
                     for root in roots
                 },
                 settings.AND_KEY: graphene.InputField(
                     graphene.List(lambda: input_type),
-                    description=settings.MESSAGES['AND_DESCRIPTION'],
+                    description='`And` field',
                 ),
                 settings.OR_KEY: graphene.InputField(
                     graphene.List(lambda: input_type),
-                    description=settings.MESSAGES['OR_DESCRIPTION'],
+                    description='`Or` field',
                 ),
                 settings.NOT_KEY: graphene.InputField(
                     lambda: input_type,
-                    description=settings.MESSAGES['NOT_DESCRIPTION'],
+                    description='`Not` field',
                 ),
             },
         ),
@@ -100,10 +96,7 @@ def create_filter_input_subtype(
                     filterset_class,
                     prefix + pascalcase(root.name),
                 ),
-                description=format_lazy(
-                    settings.MESSAGES['SUBFIELD_DESCRIPTION'],
-                    subfield=pascalcase(child.name),
-                ),
+                description=f'`{pascalcase(child.name)}` subfield',
             )
     return create_input_object_type(
         f'{prefix}{pascalcase(root.name)}FilterInputType',
@@ -151,10 +144,8 @@ def get_field(
     if filter_type in ('in', 'range'):
         field = graphene.List(field.get_type())
     field_type = field.InputField()
-    field_type.description = getattr(filter_field, 'label') or format_lazy(
-        settings.MESSAGES['LOOKUP_DESCRIPTION'],
-        lookup=pascalcase(filter_field.lookup_expr),
-    )
+    field_type.description = getattr(filter_field, 'label') or \
+        f'`{pascalcase(filter_field.lookup_expr)}` lookup'
     return field_type
 
 
