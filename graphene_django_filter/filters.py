@@ -19,13 +19,13 @@ class AnnotatedFilter(Filter):
     """Filter with a QuerySet object annotation."""
 
     class Value(NamedTuple):
-        annotate_value: Any
+        annotation_value: Any
         search_value: Any
 
     postfix = 'annotated'
 
     @property
-    def annotate_name(self) -> str:
+    def annotation_name(self) -> str:
         """Return the name used for the annotation."""
         return f'{self.field_name}_{self.postfix}_{self.creation_counter}'
 
@@ -35,8 +35,8 @@ class AnnotatedFilter(Filter):
             return qs
         if self.distinct:
             qs = qs.distinct()
-        qs = qs.annotate(**{self.annotate_name: value.annotate_value})
-        lookup = f'{self.annotate_name}{LOOKUP_SEP}{self.lookup_expr}'
+        qs = qs.annotate(**{self.annotation_name: value.annotation_value})
+        lookup = f'{self.annotation_name}{LOOKUP_SEP}{self.lookup_expr}'
         return self.get_method(qs)(**{lookup: value.search_value})
 
 
@@ -44,7 +44,7 @@ class SearchQueryFilter(AnnotatedFilter):
     """Full text search filter using the `SearchVector` and `SearchQuery` object."""
 
     class Value(NamedTuple):
-        annotate_value: SearchVector
+        annotation_value: SearchVector
         search_value: SearchQuery
 
     postfix = 'search_query'
@@ -59,7 +59,7 @@ class SearchRankFilter(AnnotatedFilter):
     """Full text search filter using the `SearchRank` object."""
 
     class Value(NamedTuple):
-        annotate_value: SearchRank
+        annotation_value: SearchRank
         search_value: float
 
     postfix = 'search_rank'
@@ -74,7 +74,7 @@ class TrigramFilter(AnnotatedFilter):
     """Full text search filter using similarity or distance of trigram."""
 
     class Value(NamedTuple):
-        annotate_value: Union[TrigramSimilarity, TrigramDistance]
+        annotation_value: Union[TrigramSimilarity, TrigramDistance]
         search_value: float
 
     postfix = 'trigram'

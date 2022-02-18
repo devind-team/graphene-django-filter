@@ -30,9 +30,9 @@ class FiltersTest(TestCase):
 
     @patch.object(Filter, 'creation_counter', new=0)
     def test_annotate_name(self) -> None:
-        """Test the `annotate_name` property of the `AnnotatedFilter` class."""
+        """Test the `annotation_name` property of the `AnnotatedFilter` class."""
         annotated_filter = AnnotatedFilter(field_name='id', lookup_expr='exact')
-        self.assertEqual('id_annotated_0', annotated_filter.annotate_name)
+        self.assertEqual('id_annotated_0', annotated_filter.annotation_name)
 
     def test_annotated_filter(self) -> None:
         """Test the `filter` method of the `AnnotatedFilter` class."""
@@ -40,7 +40,7 @@ class FiltersTest(TestCase):
         users = annotated_filter.filter(
             User.objects.all(),
             AnnotatedFilter.Value(
-                annotate_value=functions.Concat(
+                annotation_value=functions.Concat(
                     models.Value('#'),
                     functions.Cast(models.F('id'), output_field=models.CharField()),
                 ),
@@ -55,7 +55,7 @@ class FiltersTest(TestCase):
         users = search_query_filter.filter(
             User.objects.all(),
             SearchQueryFilter.Value(
-                annotate_value=SearchVector('first_name'),
+                annotation_value=SearchVector('first_name'),
                 search_value=SearchQuery('Jane'),
             ),
         ).all()
@@ -68,7 +68,7 @@ class FiltersTest(TestCase):
         users = search_rank_filter.filter(
             User.objects.all(),
             SearchRankFilter.Value(
-                annotate_value=SearchRank(
+                annotation_value=SearchRank(
                     vector=SearchVector('first_name'),
                     query=SearchQuery('Jane'),
                 ),
@@ -83,7 +83,7 @@ class FiltersTest(TestCase):
         users = trigram_filter.filter(
             User.objects.all(),
             TrigramFilter.Value(
-                annotate_value=TrigramSimilarity('first_name', 'Jane'),
+                annotation_value=TrigramSimilarity('first_name', 'Jane'),
                 search_value=1,
             ),
         ).all()
