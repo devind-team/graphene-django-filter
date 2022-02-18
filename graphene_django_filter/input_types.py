@@ -35,7 +35,7 @@ class SearchVectorInputType(graphene.InputObjectType):
         description='Field names of vector',
     )
     config = graphene.InputField(SearchConfigInputType, description='Vector config'),
-    weight = graphene.InputField(SearchVectorWeight, 'Vector weight')
+    weight = graphene.InputField(SearchVectorWeight, description='Vector weight')
 
 
 class SearchQueryType(graphene.Enum):
@@ -80,7 +80,7 @@ SearchQueryInputType = create_search_query_input_type()
 
 
 class SearchQueryFilterInputType(graphene.InputObjectType):
-    """Input type for the full text search using the `SearchQueryFilter` class."""
+    """Input type for the full text search using the `SearchVector` and `SearchQuery` object."""
 
     vector = graphene.InputField(SearchVectorInputType, description='Search vector')
     query = graphene.InputField(SearchQueryInputType, description='Search query')
@@ -89,15 +89,15 @@ class SearchQueryFilterInputType(graphene.InputObjectType):
 class FloatLookups(graphene.InputObjectType):
     """Input type for float lookups."""
 
-    exact = graphene.Float('Is exact')
-    gt = graphene.Float('Is greater than')
-    gte = graphene.Float('Is greater than or equal to')
-    lt = graphene.Float('Is less than')
-    lte = graphene.Float('Is less than or equal to')
+    exact = graphene.Float(description='Is exact')
+    gt = graphene.Float(description='Is greater than')
+    gte = graphene.Float(description='Is greater than or equal to')
+    lt = graphene.Float(description='Is less than')
+    lte = graphene.Float(description='Is less than or equal to')
 
 
 class SearchRankFilterInputType(graphene.InputObjectType):
-    """Input type for the full text search using the `SearchRankFilter` class."""
+    """Input type for the full text search using the `SearchRank` object."""
 
     vector = graphene.InputField(SearchVectorInputType, description='Search vector')
     query = graphene.InputField(SearchQueryInputType, description='Search query')
@@ -112,7 +112,7 @@ class TrigramSearchType(graphene.Enum):
 
 
 class TrigramFilterInputType(graphene.InputObjectType):
-    """Input type for the full text search using the `TrigramFilter` class."""
+    """Input type for the full text search using similarity or distance of trigram."""
 
     kind = graphene.InputField(TrigramSearchType, description='Type of the search using trigrams')
     value = graphene.InputField(FloatLookups, description='Available lookups')
