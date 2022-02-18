@@ -5,13 +5,18 @@ from anytree import Node
 from anytree.exporter import DictExporter
 from django.test import TestCase
 from graphene_django_filter.input_type_factories import (
-    create_filter_input_subtype,
+    create_filter_input_subfield,
     create_filter_input_type,
     create_input_object_type,
     filterset_to_trees,
     get_filtering_args_from_filterset,
     sequence_to_tree,
     try_add_sequence,
+)
+from graphene_django_filter.input_types import (
+    SearchQueryFilterInputType,
+    SearchRankFilterInputType,
+    TrigramFilterInputType,
 )
 from stringcase import pascalcase
 
@@ -36,7 +41,21 @@ class InputTypeBuildersTests(TestCase):
         ),
     )
     task_filter_trees_roots = [
-        Node(name='name', children=[Node(name='exact'), Node(name='contains')]),
+        Node(
+            name='name', children=[
+                Node(name='exact'),
+                Node(name='contains'),
+                Node(
+                    name='trigram', children=[
+                        Node(name='exact'),
+                        Node(name='gt'),
+                        Node(name='gte'),
+                        Node(name='lt'),
+                        Node(name='lte'),
+                    ],
+                ),
+            ],
+        ),
         Node(name='created_at', children=[Node(name='gt')]),
         Node(name='completed_at', children=[Node(name='lt')]),
         Node(name='description', children=[Node(name='exact'), Node(name='contains')]),
@@ -58,6 +77,16 @@ class InputTypeBuildersTests(TestCase):
                         Node(name='contains'),
                     ],
                 ),
+            ],
+        ),
+        Node(name='search_query', children=[Node(name='exact')]),
+        Node(
+            name='search_rank', children=[
+                Node(name='exact'),
+                Node(name='gt'),
+                Node(name='gte'),
+                Node(name='lt'),
+                Node(name='lte'),
             ],
         ),
     ]
@@ -122,13 +151,16 @@ class InputTypeBuildersTests(TestCase):
         self.assertTrue(issubclass(input_object_type, graphene.InputObjectType))
         self.assertTrue(hasattr(input_object_type, 'field'))
 
-    def test_create_filter_input_subtype(self) -> None:
-        """Test the `create_filter_input_subtype` function."""
-        input_object_type = create_filter_input_subtype(
+    def test_create_filter_input_subfield_without_special(self) -> None:
+        """Test the `create_filter_input_subfield` function without any special filters."""
+        input_field = create_filter_input_subfield(
             self.task_filter_trees_roots[4],
             TaskFilter,
             'Task',
+            'User field',
         )
+        self.assertEqual('User field', input_field.description)
+        input_object_type = input_field.type
         self.assertEqual('TaskUserFilterInputType', input_object_type.__name__)
         self.assertEqual('`Exact` lookup', getattr(input_object_type, 'exact').description)
         self.assertEqual('`LastName` subfield', getattr(input_object_type, 'last_name').description)
@@ -137,6 +169,37 @@ class InputTypeBuildersTests(TestCase):
         self.assertEqual('TaskUserEmailFilterInputType', email_type.__name__)
         for attr in ('iexact', 'contains', 'icontains'):
             self.assertEqual(f'`{pascalcase(attr)}` lookup', getattr(email_type, attr).description)
+
+    def test_create_filter_input_subfield_with_search_query(self) -> None:
+        """Test the `create_filter_input_subfield` function with the search query filter."""
+        search_query_type = create_filter_input_subfield(
+            self.task_filter_trees_roots[5],
+            TaskFilter,
+            'Task',
+            'SearchQuery',
+        ).type
+        self.assertEqual(search_query_type, SearchQueryFilterInputType)
+
+    def test_create_filter_input_subtype_with_search_rank(self) -> None:
+        """Test the `create_filter_input_subtype` function with the search rank filter."""
+        search_rank_type = create_filter_input_subfield(
+            self.task_filter_trees_roots[6],
+            TaskFilter,
+            'Task',
+            'SearchRank',
+        ).type
+        self.assertEqual(search_rank_type, SearchRankFilterInputType)
+
+    def test_create_filter_input_subtype_with_trigram(self) -> None:
+        """Test the `create_filter_input_subtype` function with the trigram filter."""
+        input_object_type = create_filter_input_subfield(
+            self.task_filter_trees_roots[0],
+            TaskFilter,
+            'Task',
+            'Name field',
+        ).type
+        trigram_type = getattr(input_object_type, 'trigram').type
+        self.assertEqual(trigram_type, TrigramFilterInputType)
 
     def test_create_filter_input_type(self) -> None:
         """Test the `create_filter_input_type` function."""

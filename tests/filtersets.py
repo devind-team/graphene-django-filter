@@ -12,8 +12,8 @@ class UserFilter(AdvancedFilterSet):
         model = User
         fields = {
             'email': ('exact', 'startswith', 'contains'),
-            'first_name': ('exact', 'contains'),
-            'last_name': ('exact', 'contains'),
+            'first_name': ('exact', 'contains', 'full_text_search'),
+            'last_name': ('exact', 'contains', 'full_text_search'),
             'is_active': ('exact',),
             'birthday': ('exact',),
         }
@@ -25,7 +25,7 @@ class TaskFilter(AdvancedFilterSet):
     class Meta:
         model = Task
         fields = {
-            'name': ('exact', 'contains'),
+            'name': ('exact', 'contains', 'full_text_search'),
             'created_at': ('gt',),
             'completed_at': ('lt',),
             'description': ('exact', 'contains'),
@@ -41,7 +41,7 @@ class TaskGroupFilter(AdvancedFilterSet):
     class Meta:
         model = TaskGroup
         fields = {
-            'name': ('exact', 'contains'),
+            'name': ('exact', 'contains', 'full_text_search'),
             'priority': ('exact', 'gte', 'lte'),
             'tasks': ('exact',),
         }
