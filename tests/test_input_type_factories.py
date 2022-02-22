@@ -24,7 +24,7 @@ from .filtersets import TaskFilter
 from .object_types import TaskFilterSetClassType
 
 
-class InputTypeBuildersTests(TestCase):
+class InputTypeFactoriesTests(TestCase):
     """Input type factories tests."""
 
     abstract_tree_root = Node(

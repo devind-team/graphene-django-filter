@@ -2,11 +2,10 @@
 
 from collections import OrderedDict
 from contextlib import ExitStack
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 from unittest.mock import MagicMock, patch
 
-import graphene
 from django.db import models
 from django.test import TestCase
 from django.utils.timezone import make_aware
@@ -18,7 +17,6 @@ from graphene_django_filter.filterset import (
     get_q,
     is_full_text_search_lookup_expr,
     is_regular_lookup_expr,
-    tree_input_type_to_data,
 )
 
 from .data_generation import generate_data
@@ -28,99 +26,6 @@ from .models import Task, User
 
 class UtilsTests(TestCase):
     """Tests for utility functions and classes of the `filterset` module."""
-
-    class TaskNameFilterInputType(graphene.InputObjectType):
-        exact = graphene.String()
-
-    class TaskDescriptionFilterInputType(graphene.InputObjectType):
-        exact = graphene.String()
-
-    class TaskUserEmailFilterInputType(graphene.InputObjectType):
-        exact = graphene.String()
-        iexact = graphene.String()
-        contains = graphene.String()
-        icontains = graphene.String()
-
-    class TaskUserLastNameFilterInputType(graphene.InputObjectType):
-        exact = graphene.String()
-
-    class TaskUserFilterInputType(graphene.InputObjectType):
-        exact = graphene.String()
-        email = graphene.InputField(
-            lambda: UtilsTests.TaskUserEmailFilterInputType,
-        )
-        last_name = graphene.InputField(
-            lambda: UtilsTests.TaskUserLastNameFilterInputType,
-        )
-
-    class TaskCreatedAtInputType(graphene.InputObjectType):
-        gt = graphene.DateTime()
-
-    class TaskCompletedAtInputType(graphene.InputObjectType):
-        lg = graphene.DateTime()
-
-    TaskFilterInputType = type(
-        'TaskFilterInputType',
-        (graphene.InputObjectType,),
-        {
-            'name': graphene.InputField(lambda: UtilsTests.TaskNameFilterInputType),
-            'description': graphene.InputField(lambda: UtilsTests.TaskDescriptionFilterInputType),
-            'user': graphene.InputField(lambda: UtilsTests.TaskUserFilterInputType),
-            'created_at': graphene.InputField(lambda: UtilsTests.TaskCreatedAtInputType),
-            'completed_at': graphene.InputField(lambda: UtilsTests.TaskCompletedAtInputType),
-            'and': graphene.InputField(graphene.List(lambda: UtilsTests.TaskFilterInputType)),
-            'or': graphene.InputField(graphene.List(lambda: UtilsTests.TaskFilterInputType)),
-            'not': graphene.InputField(lambda: UtilsTests.TaskFilterInputType),
-        },
-    )
-
-    gt_datetime = datetime.today() - timedelta(days=1)
-    lt_datetime = datetime.today()
-    tree_input_type = TaskFilterInputType._meta.container({
-        'name': TaskNameFilterInputType._meta.container({'exact': 'Important task'}),
-        'description': TaskDescriptionFilterInputType._meta.container(
-            {'exact': 'This task in very important'},
-        ),
-        'user': TaskUserFilterInputType._meta.container(
-            {'email': TaskUserEmailFilterInputType._meta.container({'contains': 'dev'})},
-        ),
-        'and': [
-            TaskFilterInputType._meta.container({
-                'completed_at': TaskCompletedAtInputType._meta.container({'lt': lt_datetime}),
-            }),
-        ],
-        'or': [
-            TaskFilterInputType._meta.container({
-                'created_at': TaskCreatedAtInputType._meta.container({'gt': gt_datetime}),
-            }),
-        ],
-        'not': TaskFilterInputType._meta.container({
-            'user': TaskUserFilterInputType._meta.container(
-                {'first_name': TaskUserEmailFilterInputType._meta.container({'exact': 'John'})},
-            ),
-        }),
-    })
-
-    def test_tree_input_type_to_data(self) -> None:
-        """Test the `tree_input_type_to_data` function."""
-        data = tree_input_type_to_data(self.tree_input_type)
-        self.assertEqual(
-            {
-                'name': 'Important task',
-                'description': 'This task in very important',
-                'user__email__contains': 'dev',
-                'and': [{
-                    'completed_at__lt': self.lt_datetime,
-                }],
-                'or': [{
-                    'created_at__gt': self.gt_datetime,
-                }],
-                'not': {
-                    'user__first_name': 'John',
-                },
-            },
-            data,
-        )
 
     def test_queryset_proxy(self) -> None:
         """Test the `QuerySetProxy` class."""

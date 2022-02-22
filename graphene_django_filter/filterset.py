@@ -14,32 +14,9 @@ from django.forms.utils import ErrorDict
 from django_filters import Filter
 from django_filters.conf import settings as django_settings
 from django_filters.filterset import BaseFilterSet, FilterSetMetaclass
-from graphene.types.inputobjecttype import InputObjectTypeContainer
 from wrapt import ObjectProxy
 
 from .conf import settings
-
-
-def tree_input_type_to_data(
-    tree_input_type: InputObjectTypeContainer,
-    prefix: str = '',
-) -> Dict[str, Any]:
-    """Convert a tree_input_type to a FilterSet data."""
-    result: Dict[str, Any] = {}
-    for key, value in tree_input_type.items():
-        if key in ('and', 'or'):
-            result[key] = [tree_input_type_to_data(subtree) for subtree in value]
-        elif key == 'not':
-            result[key] = tree_input_type_to_data(value)
-        else:
-            k = (prefix + LOOKUP_SEP + key if prefix else key).replace(
-                LOOKUP_SEP + django_settings.DEFAULT_LOOKUP_EXPR, '',
-            )
-            if isinstance(value, InputObjectTypeContainer):
-                result.update(tree_input_type_to_data(value, k))
-            else:
-                result[k] = value
-    return result
 
 
 class QuerySetProxy(ObjectProxy):
@@ -105,7 +82,7 @@ def is_regular_lookup_expr(lookup_expr: str) -> bool:
 
 
 class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
-    """Allow you to use advanced filters with `or` and `and` expressions."""
+    """Allow you to use advanced filters."""
 
     class TreeFormMixin(Form):
         """Tree-like form mixin."""
