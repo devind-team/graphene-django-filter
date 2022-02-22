@@ -2,6 +2,16 @@
 [![CI](https://github.com/devind-team/graphene-django-filter/workflows/CI/badge.svg)](https://github.com/devind-team/graphene-django-filter/actions) [![PyPI version](https://badge.fury.io/py/graphene-django-filter.svg)](https://badge.fury.io/py/graphene-django-filter)
 
 This package contains advanced filters for [graphene-django](https://github.com/graphql-python/graphene-django). The standard filtering feature in graphene-django relies on the [django-filter](https://github.com/carltongibson/django-filter) library and therefore provides the flat API without the ability to use logical operators such as `and`, `or` and `not`. This library makes the API nested and adds logical expressions by extension of the `DjangoFilterConnectionField` field and the `FilterSet` class.
+
+# Install
+
+```shell
+# pip
+pip install graphene-django-filter
+# poetry
+poetry add graphene-django-filter
+```
+
 # Requirements
 * Python (3.6, 3.7, 3.8, 3.9, 3.10)
 * Graphene-Django (2.15)
