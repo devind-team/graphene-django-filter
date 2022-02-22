@@ -86,7 +86,7 @@ class SearchQueryFilterInputType(graphene.InputObjectType):
     query = graphene.InputField(SearchQueryInputType, required=True, description='Search query')
 
 
-class FloatLookups(graphene.InputObjectType):
+class FloatLookupsInputType(graphene.InputObjectType):
     """Input type for float lookups."""
 
     exact = graphene.Float(description='Is exact')
@@ -96,17 +96,34 @@ class FloatLookups(graphene.InputObjectType):
     lte = graphene.Float(description='Is less than or equal to')
 
 
+class SearchRankWeightsInputType(graphene.InputObjectType):
+    """`SearchRank` object weights.
+
+    Default values are set according to the documentation.
+    https://docs.djangoproject.com/en/3.2/ref/contrib/postgres/search/#weighting-queries
+    """
+
+    D = graphene.Float(default_value=0.1, description='D letter')
+    C = graphene.Float(default_value=0.2, description='C letter')
+    B = graphene.Float(default_value=0.4, description='B letter')
+    A = graphene.Float(default_value=1.0, description='A letter')
+
+
 class SearchRankFilterInputType(graphene.InputObjectType):
     """Input type for the full text search using the `SearchRank` object."""
 
     vector = graphene.InputField(SearchVectorInputType, required=True, description='Search vector')
     query = graphene.InputField(SearchQueryInputType, required=True, description='Search query')
-    lookups = graphene.InputField(FloatLookups, required=True, description='Available lookups')
-    weights = graphene.InputField(
-        graphene.List(graphene.Float),
-        description='Search rank weights',
-    ),
-    cover_density = graphene.Boolean(description='Whether to include coverage density ranking')
+    lookups = graphene.InputField(
+        FloatLookupsInputType,
+        required=True,
+        description='Available lookups',
+    )
+    weights = graphene.InputField(SearchRankWeightsInputType, description='Search rank weights')
+    cover_density = graphene.Boolean(
+        default_value=False,
+        description='Whether to include coverage density ranking',
+    )
     normalization = graphene.Int(description='Search rank normalization')
 
 
@@ -125,5 +142,9 @@ class TrigramFilterInputType(graphene.InputObjectType):
         default_value=TrigramSearchKind.SIMILARITY,
         description='Type of the search using trigrams',
     )
-    lookups = graphene.InputField(FloatLookups, required=True, description='Available lookups')
+    lookups = graphene.InputField(
+        FloatLookupsInputType,
+        required=True,
+        description='Available lookups',
+    )
     value = graphene.String(required=True, description='Search value')
