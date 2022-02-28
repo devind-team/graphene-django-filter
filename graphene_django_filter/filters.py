@@ -1,6 +1,6 @@
 """Additional filters for special lookups."""
 
-from typing import Any, NamedTuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
 
 from django.contrib.postgres.search import (
     SearchQuery,
@@ -24,10 +24,32 @@ class AnnotatedFilter(Filter):
 
     postfix = 'annotated'
 
+    def __init__(
+        self,
+        field_name: Optional[str] = None,
+        lookup_expr: Optional[str] = None,
+        *,
+        label: Optional[str] = None,
+        method: Optional[Union[str, Callable]] = None,
+        distinct: bool = False,
+        exclude: bool = False,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            field_name,
+            lookup_expr,
+            label=label,
+            method=method,
+            distinct=distinct,
+            exclude=exclude,
+            **kwargs
+        )
+        self.filter_counter = 0
+
     @property
     def annotation_name(self) -> str:
         """Return the name used for the annotation."""
-        return f'{self.field_name}_{self.postfix}_{self.creation_counter}'
+        return f'{self.field_name}_{self.postfix}_{self.creation_counter}_{self.filter_counter}'
 
     def filter(self, qs: models.QuerySet, value: Value) -> models.QuerySet:
         """Filter a QuerySet using annotation."""
@@ -35,8 +57,10 @@ class AnnotatedFilter(Filter):
             return qs
         if self.distinct:
             qs = qs.distinct()
-        qs = qs.annotate(**{self.annotation_name: value.annotation_value})
-        lookup = f'{self.annotation_name}{LOOKUP_SEP}{self.lookup_expr}'
+        annotation_name = self.annotation_name
+        self.filter_counter += 1
+        qs = qs.annotate(**{annotation_name: value.annotation_value})
+        lookup = f'{annotation_name}{LOOKUP_SEP}{self.lookup_expr}'
         return self.get_method(qs)(**{lookup: value.search_value})
 
 

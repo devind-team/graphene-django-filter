@@ -32,11 +32,12 @@ class FiltersTest(TestCase):
     def test_annotate_name(self) -> None:
         """Test the `annotation_name` property of the `AnnotatedFilter` class."""
         annotated_filter = AnnotatedFilter(field_name='id', lookup_expr='exact')
-        self.assertEqual('id_annotated_0', annotated_filter.annotation_name)
+        self.assertEqual('id_annotated_0_0', annotated_filter.annotation_name)
 
     def test_annotated_filter(self) -> None:
         """Test the `filter` method of the `AnnotatedFilter` class."""
         annotated_filter = AnnotatedFilter(field_name='id', lookup_expr='exact')
+        self.assertEqual(0, annotated_filter.filter_counter)
         users = annotated_filter.filter(
             User.objects.all(),
             AnnotatedFilter.Value(
@@ -47,6 +48,7 @@ class FiltersTest(TestCase):
                 search_value='#5',
             ),
         ).all()
+        self.assertEqual(1, annotated_filter.filter_counter)
         self.assertEqual([5], list(map(lambda user: user.id, users)))
 
     def test_search_query_filter(self) -> None:
@@ -75,7 +77,7 @@ class FiltersTest(TestCase):
                 search_value=1,
             ),
         ).all()
-        self.assertTrue(all(hasattr(user, 'first_name_search_rank_0') for user in users))
+        self.assertTrue(all(hasattr(user, 'first_name_search_rank_0_0') for user in users))
 
     def test_trigram_filter(self) -> None:
         """Test the `TrigramFilter` class."""
