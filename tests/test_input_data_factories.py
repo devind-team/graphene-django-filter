@@ -34,6 +34,7 @@ from graphene_django_filter.input_data_factories import (
     create_search_vector,
     create_trigram_data,
     tree_input_type_to_data,
+    validate_search_query,
     validate_search_vector_fields,
 )
 from graphene_django_filter.input_types import (
@@ -72,6 +73,7 @@ class InputDataFactoriesTests(TestCase):
         'D': SearchRankWeightsInputType.D.kwargs['default_value'],
     })
 
+    invalid_search_query_input_type = SearchQueryInputType._meta.container({})
     config_search_query_input_type = SearchConfigInputType._meta.container({
         'config': SearchConfigInputType._meta.container({
             'value': 'russian',
@@ -244,6 +246,20 @@ class InputDataFactoriesTests(TestCase):
         }),
     })
 
+    def test_validate_search_query(self) -> None:
+        """Test the `validate_search_query` function."""
+        for key in ('value', 'and', 'or', 'not'):
+            search_query_input_type = SearchQueryInputType._meta.container({
+                key: 'value',
+            })
+            validate_search_query(search_query_input_type)
+        with self.assertRaisesMessage(
+            ValidationError,
+            'The search query must contains at least one required field '
+            'such as `value`, `and`, `or`, `not`.',
+        ):
+            validate_search_query(SearchQueryInputType._meta.container({}))
+
     def test_validate_search_vector_fields(self) -> None:
         """Test the `validate_search_vector_fields` function."""
         validate_search_vector_fields(self.filterset_class_mock, ['field1', 'field2'])
@@ -277,6 +293,8 @@ class InputDataFactoriesTests(TestCase):
 
     def test_create_search_query(self) -> None:
         """Test the `create_search_query` function."""
+        with self.assertRaises(ValidationError):
+            create_search_query(self.invalid_search_query_input_type)
         config_search_query = create_search_query(self.config_search_query_input_type)
         self.assertEqual(SearchQuery('value', config='russian'), config_search_query)
         expressions_search_query = create_search_query(self.expressions_search_query_input_type)

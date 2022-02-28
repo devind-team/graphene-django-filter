@@ -56,7 +56,7 @@ def create_search_query_input_type() -> Type[graphene.InputObjectType]:
             (graphene.InputObjectType,),
             {
                 '__doc__': 'Input type for creating the `SearchQuery` object.',
-                'value': graphene.String(required=True, description='Query value'),
+                'value': graphene.String(description='Query value'),
                 'config': graphene.InputField(SearchConfigInputType, description='Query config'),
                 settings.AND_KEY: graphene.InputField(
                     graphene.List(lambda: search_query_input_type),

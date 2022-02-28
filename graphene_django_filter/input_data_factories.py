@@ -148,11 +148,16 @@ def create_search_query(
     input_type: Union[SearchQueryInputType, InputObjectTypeContainer],
 ) -> SearchQuery:
     """Create an object of the `SearchQuery` class."""
-    config = input_type.get('config', None)
-    if config:
-        search_query = SearchQuery(input_type.value, config=create_search_config(config))
+    validate_search_query(input_type)
+    value = input_type.get('value', None)
+    if value:
+        config = input_type.get('config', None)
+        if config:
+            search_query = SearchQuery(input_type.value, config=create_search_config(config))
+        else:
+            search_query = SearchQuery(input_type.value)
     else:
-        search_query = SearchQuery(input_type.value)
+        search_query = None
     and_search_query = None
     for and_input_type in input_type.get(settings.AND_KEY, []):
         if and_search_query is None:
@@ -171,7 +176,7 @@ def create_search_query(
         q for q in (and_search_query, or_search_query, not_search_query) if q is not None
     )
     for valid_query in valid_queries:
-        search_query = search_query & valid_query
+        search_query = search_query & valid_query if search_query else valid_query
     return search_query
 
 
@@ -194,6 +199,22 @@ def validate_search_vector_fields(
     for field in fields:
         if field not in full_text_search_fields:
             raise ValidationError(f'The `{field}` field is not included in full text search fields')
+
+
+def validate_search_query(
+    input_type: Union[SearchQueryInputType, InputObjectTypeContainer],
+) -> None:
+    """Validate that search query contains at least one required field."""
+    if all([
+        'value' not in input_type,
+        settings.AND_KEY not in input_type,
+        settings.OR_KEY not in input_type,
+        settings.NOT_KEY not in input_type,
+    ]):
+        raise ValidationError(
+            'The search query must contains at least one required field '
+            f'such as `value`, `{settings.AND_KEY}`, `{settings.OR_KEY}`, `{settings.NOT_KEY}`.',
+        )
 
 
 DATA_FACTORIES = {
