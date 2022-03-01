@@ -19,7 +19,7 @@ from .data_generation import generate_data
 from .models import User
 
 
-class FiltersTest(TestCase):
+class FiltersTests(TestCase):
     """Tests for additional filters for special lookups."""
 
     @classmethod
