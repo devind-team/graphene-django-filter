@@ -9,12 +9,11 @@ from unittest.mock import MagicMock, patch
 from django.db import models
 from django.test import TestCase
 from django.utils.timezone import make_aware
-from django_filters import CharFilter, Filter
+from django_filters import CharFilter
 from graphene_django_filter.filters import SearchQueryFilter, SearchRankFilter, TrigramFilter
 from graphene_django_filter.filterset import (
     AdvancedFilterSet,
     QuerySetProxy,
-    get_q,
     is_full_text_search_lookup_expr,
     is_regular_lookup_expr,
 )
@@ -31,7 +30,10 @@ class UtilsTests(TestCase):
         """Test the `QuerySetProxy` class."""
         queryset = User.objects.all()
         queryset_proxy = QuerySetProxy(queryset)
-        self.assertEqual(queryset.get, queryset_proxy.get)
+        self.assertIsInstance(
+            queryset_proxy.annotate(number=models.F('id') + models.Value('#')),
+            QuerySetProxy,
+        )
         self.assertNotEqual(queryset.filter, queryset_proxy.filter)
         self.assertNotEqual(queryset.exclude, queryset_proxy.exclude)
         queryset_proxy.filter(email__contains='kate').exclude(
@@ -43,13 +45,7 @@ class UtilsTests(TestCase):
             ),
             queryset_proxy.q,
         )
-
-    def test_get_q(self) -> None:
-        """Test the `test_get_q` function."""
-        queryset = User.objects.all()
-        filter_obj = Filter(field_name='first_name', lookup_expr='exact')
-        q = get_q(queryset, filter_obj, 'John')
-        self.assertEqual(models.Q(first_name__exact='John'), q)
+        self.assertEqual([queryset_proxy.__wrapped__, queryset_proxy.q], list(queryset_proxy))
 
     def test_is_full_text_search_lookup(self) -> None:
         """Test the `is_full_text_search_lookup` function."""
@@ -165,7 +161,7 @@ class AdvancedFilterSetTests(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """Set up `AdvancedFilterSetTest` class tests."""
+        """Set up `AdvancedFilterSetTest` class."""
         super().setUpClass()
         generate_data()
 

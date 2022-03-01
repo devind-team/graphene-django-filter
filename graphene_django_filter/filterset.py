@@ -5,7 +5,7 @@ Use the `AdvancedFilterSet` class from this module instead of the `FilterSet` fr
 
 import warnings
 from collections import OrderedDict
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type, Union, cast
 
 from django.db import connection, models
 from django.db.models.constants import LOOKUP_SEP
@@ -31,9 +31,9 @@ class QuerySetProxy(ObjectProxy):
 
     __slots__ = 'q'
 
-    def __init__(self, wrapped: models.QuerySet) -> None:
+    def __init__(self, wrapped: models.QuerySet, q: Optional[models.Q] = None) -> None:
         super().__init__(wrapped)
-        self.q = models.Q()
+        self.q = q or models.Q()
 
     def __getattr__(self, name: str) -> Any:
         """Return QuerySet attributes for all cases except `filter` and `exclude`."""
@@ -41,7 +41,19 @@ class QuerySetProxy(ObjectProxy):
             return self.filter_
         elif name == 'exclude':
             return self.exclude_
-        return super().__getattr__(name)
+        attr = super().__getattr__(name)
+        if callable(attr):
+            def func(*args, **kwargs) -> Any:
+                result = attr(*args, **kwargs)
+                if isinstance(result, models.QuerySet):
+                    return QuerySetProxy(result, self.q)
+                return result
+            return func
+        return attr
+
+    def __iter__(self) -> Iterator[Any]:
+        """Return QuerySet and Q objects."""
+        return iter([self.__wrapped__, self.q])
 
     def filter_(self, *args, **kwargs) -> 'QuerySetProxy':
         """Replace the `filter` method of the QuerySet class."""
@@ -60,13 +72,6 @@ class QuerySetProxy(ObjectProxy):
             q = models.Q(*args, **kwargs)
         self.q = self.q & ~q
         return self
-
-
-def get_q(queryset: models.QuerySet, filter_obj: Filter, value: Any) -> models.Q:
-    """Return a Q object for a queryset, filter and value."""
-    queryset_proxy = QuerySetProxy(queryset)
-    filter_obj.filter(queryset_proxy, value)
-    return queryset_proxy.q
 
 
 def is_full_text_search_lookup_expr(lookup_expr: str) -> bool:
@@ -176,25 +181,33 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
 
     def filter_queryset(self, queryset: models.QuerySet) -> models.QuerySet:
         """Filter a queryset with a top level form's `cleaned_data`."""
-        return queryset.filter(self.get_q_for_form(queryset, self.form))
+        qs, q = self.get_queryset_proxy_for_form(queryset, self.form)
+        return qs.filter(q)
 
-    def get_q_for_form(
+    def get_queryset_proxy_for_form(
         self,
         queryset: models.QuerySet,
         form: Union[Form, TreeFormMixin],
-    ) -> models.Q:
-        """Return a Q object for a form's `cleaned_data` using `and`, `or` or `not` operator."""
+    ) -> QuerySetProxy:
+        """Return a `QuerySetProxy` object for a form's `cleaned_data`."""
+        qs = queryset
         q = models.Q()
         for name, value in form.cleaned_data.items():
-            q = q & get_q(queryset, self.find_filter(name), value)
+            qs, q = self.find_filter(name).filter(QuerySetProxy(qs, q), value)
         and_q = models.Q()
         for and_form in form.and_forms:
-            and_q = and_q & self.get_q_for_form(queryset, and_form)
+            qs, new_q = self.get_queryset_proxy_for_form(qs, and_form)
+            and_q = and_q & new_q
         or_q = models.Q()
         for or_form in form.or_forms:
-            or_q = or_q | self.get_q_for_form(queryset, or_form)
-        not_q = ~self.get_q_for_form(queryset, form.not_form) if form.not_form else models.Q()
-        return q & and_q & or_q & not_q
+            qs, new_q = self.get_queryset_proxy_for_form(qs, or_form)
+            or_q = or_q | new_q
+        if form.not_form:
+            qs, new_q = self.get_queryset_proxy_for_form(queryset, form.not_form)
+            not_q = ~new_q
+        else:
+            not_q = models.Q()
+        return QuerySetProxy(qs, q & and_q & or_q & not_q)
 
     @classmethod
     def get_filters(cls) -> OrderedDict:
