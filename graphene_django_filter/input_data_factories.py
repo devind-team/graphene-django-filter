@@ -99,7 +99,10 @@ def create_search_rank_data(
         normalization = input_type.get('normalization', None)
         if normalization:
             search_rank_data['normalization'] = normalization
-        rank_data[key + LOOKUP_SEP + lookup] = SearchRankFilter.Value(
+        k = (key + LOOKUP_SEP + lookup).replace(
+            LOOKUP_SEP + django_settings.DEFAULT_LOOKUP_EXPR, '',
+        )
+        rank_data[k] = SearchRankFilter.Value(
             annotation_value=SearchRank(**search_rank_data),
             search_value=value,
         )
@@ -118,7 +121,10 @@ def create_trigram_data(
     else:
         trigram_class = TrigramDistance
     for lookup, value in input_type.lookups.items():
-        trigram_data[key + LOOKUP_SEP + lookup] = TrigramFilter.Value(
+        k = (key + LOOKUP_SEP + lookup).replace(
+            LOOKUP_SEP + django_settings.DEFAULT_LOOKUP_EXPR, '',
+        )
+        trigram_data[k] = TrigramFilter.Value(
             annotation_value=trigram_class(
                 LOOKUP_SEP.join(key.split(LOOKUP_SEP)[:-1]),
                 input_type.value,
