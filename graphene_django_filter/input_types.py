@@ -10,7 +10,10 @@ from .conf import settings
 class SearchConfigInputType(graphene.InputObjectType):
     """Input type for the `SearchVector` or `SearchQuery` object config."""
 
-    value = graphene.String(description='`SearchVector` or `SearchQuery` object config value')
+    value = graphene.String(
+        required=True,
+        description='`SearchVector` or `SearchQuery` object config value',
+    )
     is_field = graphene.Boolean(
         default_value=False,
         description='Whether to wrap the value with the F object',
@@ -59,15 +62,15 @@ def create_search_query_input_type() -> Type[graphene.InputObjectType]:
                 'value': graphene.String(description='Query value'),
                 'config': graphene.InputField(SearchConfigInputType, description='Query config'),
                 settings.AND_KEY: graphene.InputField(
-                    graphene.List(lambda: search_query_input_type),
+                    graphene.List(graphene.NonNull(lambda: search_query_input_type)),
                     description='`And` field',
                 ),
                 settings.OR_KEY: graphene.InputField(
-                    graphene.List(lambda: search_query_input_type),
+                    graphene.List(graphene.NonNull(lambda: search_query_input_type)),
                     description='`Or` field',
                 ),
                 settings.NOT_KEY: graphene.InputField(
-                    graphene.List(lambda: search_query_input_type),
+                    graphene.List(graphene.NonNull(lambda: search_query_input_type)),
                     description='`Not` field',
                 ),
             },
