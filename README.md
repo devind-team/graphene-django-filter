@@ -1,6 +1,8 @@
 # Graphene-Django-Filter
 [![CI](https://github.com/devind-team/graphene-django-filter/workflows/CI/badge.svg)](https://github.com/devind-team/graphene-django-filter/actions)
+[![Coverage Status](https://coveralls.io/repos/github/devind-team/graphene-django-filter/badge.svg?branch=main)](https://coveralls.io/github/devind-team/graphene-django-filter?branch=main)
 [![PyPI version](https://badge.fury.io/py/graphene-django-filter.svg)](https://badge.fury.io/py/graphene-django-filter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This package contains advanced filters for [graphene-django](https://github.com/graphql-python/graphene-django).
 The standard filtering feature in graphene-django relies on the [django-filter](https://github.com/carltongibson/django-filter)
@@ -171,7 +173,7 @@ input FilterInputType {
   ...FieldLookups
 }
 ```
-For more examples, see [tests](https://github.com/devind-team/graphene-django-filter/blob/8faa52bdfc2a66fc74a8aecb798b8358f7f7ea7c/tests/test_connection_field.py#L19).
+For more examples, see [tests](https://github.com/devind-team/graphene-django-filter/blob/06ed0af8def8a4378b4c65a5d137ef17b6176cab/tests/test_queries_execution.py#L23).
 
 ## Full text search
 Django provides the [API](https://docs.djangoproject.com/en/3.2/ref/contrib/postgres/search/)
@@ -366,7 +368,7 @@ input TrigramFilterInputType {
   value: String!
 }
 ```
-For more examples, see [tests](https://github.com/devind-team/graphene-django-filter/blob/8faa52bdfc2a66fc74a8aecb798b8358f7f7ea7c/tests/test_connection_field.py#L19).
+For more examples, see [tests](https://github.com/devind-team/graphene-django-filter/blob/06ed0af8def8a4378b4c65a5d137ef17b6176cab/tests/test_queries_execution.py#L134).
 
 ## Settings
 The library can be customised using settings.
