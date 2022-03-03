@@ -7,12 +7,19 @@ from anytree import Node
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django_filters import Filter
-from django_filters.conf import settings
+from django_filters.conf import settings as django_settings
 from graphene_django.filter.utils import get_model_field
 from graphene_django.forms.converter import convert_form_field
 from stringcase import pascalcase
 
+from .conf import settings
+from .filters import SearchQueryFilter, SearchRankFilter, TrigramFilter
 from .filterset import AdvancedFilterSet
+from .input_types import (
+    SearchQueryFilterInputType,
+    SearchRankFilterInputType,
+    TrigramFilterInputType,
+)
 
 
 def get_filtering_args_from_filterset(
@@ -24,7 +31,7 @@ def get_filtering_args_from_filterset(
     These arguments will be available to filter against in the GraphQL.
     """
     return {
-        'filter': graphene.Argument(
+        settings.FILTER_KEY: graphene.Argument(
             create_filter_input_type(
                 filterset_to_trees(filterset_class),
                 filterset_class,
@@ -47,57 +54,85 @@ def create_filter_input_type(
             (graphene.InputObjectType,),
             {
                 **{
-                    root.name: graphene.InputField(
-                        create_filter_input_subtype(root, filterset_class, type_name),
-                        description=f'`{pascalcase(root.name)}` field',
+                    root.name: create_filter_input_subfield(
+                        root,
+                        filterset_class,
+                        type_name,
+                        f'`{pascalcase(root.name)}` field',
                     )
                     for root in roots
                 },
-                'and': graphene.InputField(
+                settings.AND_KEY: graphene.InputField(
                     graphene.List(lambda: input_type),
                     description='`And` field',
                 ),
-                'or': graphene.InputField(
+                settings.OR_KEY: graphene.InputField(
                     graphene.List(lambda: input_type),
                     description='`Or` field',
                 ),
-                'not': graphene.InputField(lambda: input_type, description='`Not` field'),
+                settings.NOT_KEY: graphene.InputField(
+                    lambda: input_type,
+                    description='`Not` field',
+                ),
             },
         ),
     )
     return input_type
 
 
-def create_filter_input_subtype(
+def create_filter_input_subfield(
     root: Node,
     filterset_class: Type[AdvancedFilterSet],
     prefix: str,
-) -> Type[graphene.InputObjectType]:
-    """Create a filter input subtype from a filter set subtree."""
+    description: str,
+) -> graphene.InputField:
+    """Create a filter input subfield from a filter set subtree."""
     fields: Dict[str, graphene.InputField] = {}
-    for child in root.children:
-        if child.height == 0:
-            filter_name = f'{LOOKUP_SEP}'.join(
-                node.name for node in child.path if node.name != settings.DEFAULT_LOOKUP_EXPR
-            )
-            fields[child.name] = get_field(
-                filterset_class,
-                filter_name,
-                filterset_class.base_filters[filter_name],
-            )
-        else:
-            fields[child.name] = graphene.InputField(
-                create_filter_input_subtype(
+    if root.name in SPECIAL_FILTER_INPUT_TYPES_FACTORIES:
+        return SPECIAL_FILTER_INPUT_TYPES_FACTORIES[root.name]()
+    else:
+        for child in root.children:
+            if child.height == 0:
+                filter_name = f'{LOOKUP_SEP}'.join(
+                    node.name for node in child.path
+                    if node.name != django_settings.DEFAULT_LOOKUP_EXPR
+                )
+                fields[child.name] = get_field(
+                    filterset_class,
+                    filter_name,
+                    filterset_class.base_filters[filter_name],
+                )
+            else:
+                fields[child.name] = create_filter_input_subfield(
                     child,
                     filterset_class,
                     prefix + pascalcase(root.name),
-                ),
-                description=f'`{pascalcase(child.name)}` subfield',
-            )
-    return create_input_object_type(
-        f'{prefix}{pascalcase(root.name)}FilterInputType',
-        fields,
+                    f'`{pascalcase(child.name)}` subfield',
+                )
+    return graphene.InputField(
+        create_input_object_type(
+            f'{prefix}{pascalcase(root.name)}FilterInputType',
+            fields,
+        ),
+        description=description,
     )
+
+
+SPECIAL_FILTER_INPUT_TYPES_FACTORIES = {
+    SearchQueryFilter.postfix: lambda: graphene.InputField(
+        SearchQueryFilterInputType,
+        description='Field for the full text search using '
+                    'the `SearchVector` and `SearchQuery` object',
+    ),
+    SearchRankFilter.postfix: lambda: graphene.InputField(
+        SearchRankFilterInputType,
+        description='Field for the full text search using the `SearchRank` object',
+    ),
+    TrigramFilter.postfix: lambda: graphene.InputField(
+        TrigramFilterInputType,
+        description='Field for the full text search using similarity or distance of trigram',
+    ),
+}
 
 
 def create_input_object_type(name: str, fields: Dict[str, Any]) -> Type[graphene.InputObjectType]:

@@ -3,39 +3,20 @@
 Use the `AdvancedFilterSet` class from this module instead of the `FilterSet` from django-filter.
 """
 
-from typing import Any, Dict, List, Optional, Type, Union, cast
+import warnings
+from collections import OrderedDict
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type, Union, cast
 
-from django.db import models
+from django.db import connection, models
 from django.db.models.constants import LOOKUP_SEP
 from django.forms import Form
 from django.forms.utils import ErrorDict
 from django_filters import Filter
-from django_filters.conf import settings
+from django_filters.conf import settings as django_settings
 from django_filters.filterset import BaseFilterSet, FilterSetMetaclass
-from graphene.types.inputobjecttype import InputObjectTypeContainer
 from wrapt import ObjectProxy
 
-
-def tree_input_type_to_data(
-    tree_input_type: InputObjectTypeContainer,
-    prefix: str = '',
-) -> Dict[str, Any]:
-    """Convert a tree_input_type to a FilterSet data."""
-    result: Dict[str, Any] = {}
-    for key, value in tree_input_type.items():
-        if key in ('and', 'or'):
-            result[key] = [tree_input_type_to_data(subtree) for subtree in value]
-        elif key == 'not':
-            result[key] = tree_input_type_to_data(value)
-        else:
-            k = (prefix + LOOKUP_SEP + key if prefix else key).replace(
-                LOOKUP_SEP + settings.DEFAULT_LOOKUP_EXPR, '',
-            )
-            if isinstance(value, InputObjectTypeContainer):
-                result.update(tree_input_type_to_data(value, k))
-            else:
-                result[k] = value
-    return result
+from .conf import settings
 
 
 class QuerySetProxy(ObjectProxy):
@@ -50,9 +31,9 @@ class QuerySetProxy(ObjectProxy):
 
     __slots__ = 'q'
 
-    def __init__(self, wrapped: models.QuerySet) -> None:
+    def __init__(self, wrapped: models.QuerySet, q: Optional[models.Q] = None) -> None:
         super().__init__(wrapped)
-        self.q = models.Q()
+        self.q = q or models.Q()
 
     def __getattr__(self, name: str) -> Any:
         """Return QuerySet attributes for all cases except `filter` and `exclude`."""
@@ -60,7 +41,19 @@ class QuerySetProxy(ObjectProxy):
             return self.filter_
         elif name == 'exclude':
             return self.exclude_
-        return super().__getattr__(name)
+        attr = super().__getattr__(name)
+        if callable(attr):
+            def func(*args, **kwargs) -> Any:
+                result = attr(*args, **kwargs)
+                if isinstance(result, models.QuerySet):
+                    return QuerySetProxy(result, self.q)
+                return result
+            return func
+        return attr
+
+    def __iter__(self) -> Iterator[Any]:
+        """Return QuerySet and Q objects."""
+        return iter([self.__wrapped__, self.q])
 
     def filter_(self, *args, **kwargs) -> 'QuerySetProxy':
         """Replace the `filter` method of the QuerySet class."""
@@ -81,15 +74,20 @@ class QuerySetProxy(ObjectProxy):
         return self
 
 
-def get_q(queryset: models.QuerySet, filter_obj: Filter, value: Any) -> models.Q:
-    """Return a Q object for a queryset, filter and value."""
-    queryset_proxy = QuerySetProxy(queryset)
-    filter_obj.filter(queryset_proxy, value)
-    return queryset_proxy.q
+def is_full_text_search_lookup_expr(lookup_expr: str) -> bool:
+    """Determine if a lookup_expr is a full text search expression."""
+    return lookup_expr.split(LOOKUP_SEP)[-1] == 'full_text_search'
+
+
+def is_regular_lookup_expr(lookup_expr: str) -> bool:
+    """Determine whether the lookup_expr must be processed in a regular way."""
+    return not any([
+        is_full_text_search_lookup_expr(lookup_expr),
+    ])
 
 
 class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
-    """Allow you to use advanced filters with `or` and `and` expressions."""
+    """Allow you to use advanced filters."""
 
     class TreeFormMixin(Form):
         """Tree-like form mixin."""
@@ -173,8 +171,8 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
         if LOOKUP_SEP in data_key:
             field_name, lookup_expr = data_key.rsplit(LOOKUP_SEP, 1)
         else:
-            field_name, lookup_expr = data_key, settings.DEFAULT_LOOKUP_EXPR
-        key = field_name if lookup_expr == settings.DEFAULT_LOOKUP_EXPR else data_key
+            field_name, lookup_expr = data_key, django_settings.DEFAULT_LOOKUP_EXPR
+        key = field_name if lookup_expr == django_settings.DEFAULT_LOOKUP_EXPR else data_key
         if key in self.filters:
             return self.filters[key]
         for filter_value in self.filters.values():
@@ -183,22 +181,120 @@ class AdvancedFilterSet(BaseFilterSet, metaclass=FilterSetMetaclass):
 
     def filter_queryset(self, queryset: models.QuerySet) -> models.QuerySet:
         """Filter a queryset with a top level form's `cleaned_data`."""
-        return queryset.filter(self.get_q_for_form(queryset, self.form))
+        qs, q = self.get_queryset_proxy_for_form(queryset, self.form)
+        return qs.filter(q)
 
-    def get_q_for_form(
+    def get_queryset_proxy_for_form(
         self,
         queryset: models.QuerySet,
         form: Union[Form, TreeFormMixin],
-    ) -> models.Q:
-        """Return a Q object for a form's `cleaned_data` using `and`, `or` or `not` operator."""
+    ) -> QuerySetProxy:
+        """Return a `QuerySetProxy` object for a form's `cleaned_data`."""
+        qs = queryset
         q = models.Q()
         for name, value in form.cleaned_data.items():
-            q = q & get_q(queryset, self.find_filter(name), value)
+            qs, q = self.find_filter(name).filter(QuerySetProxy(qs, q), value)
         and_q = models.Q()
         for and_form in form.and_forms:
-            and_q = and_q & self.get_q_for_form(queryset, and_form)
+            qs, new_q = self.get_queryset_proxy_for_form(qs, and_form)
+            and_q = and_q & new_q
         or_q = models.Q()
         for or_form in form.or_forms:
-            or_q = or_q | self.get_q_for_form(queryset, or_form)
-        not_q = ~self.get_q_for_form(queryset, form.not_form) if form.not_form else models.Q()
-        return q & and_q & or_q & not_q
+            qs, new_q = self.get_queryset_proxy_for_form(qs, or_form)
+            or_q = or_q | new_q
+        if form.not_form:
+            qs, new_q = self.get_queryset_proxy_for_form(queryset, form.not_form)
+            not_q = ~new_q
+        else:
+            not_q = models.Q()
+        return QuerySetProxy(qs, q & and_q & or_q & not_q)
+
+    @classmethod
+    def get_filters(cls) -> OrderedDict:
+        """Get all filters for the filterset.
+
+        This is the combination of declared and generated filters.
+        """
+        filters = super().get_filters()
+        if not cls._meta.model:
+            return filters
+        return OrderedDict([
+            *filters.items(),
+            *cls.create_full_text_search_filters(filters).items(),
+        ])
+
+    @classmethod
+    def create_full_text_search_filters(
+        cls,
+        base_filters: OrderedDict,
+    ) -> OrderedDict:
+        """Create available full text search filters."""
+        new_filters = OrderedDict()
+        full_text_search_fields = cls.get_full_text_search_fields()
+        if not len(full_text_search_fields):
+            return new_filters
+        if not settings.IS_POSTGRESQL:
+            warnings.warn(
+                f'Full text search is not available because the {connection.vendor} vendor is '
+                'used instead of the postgresql vendor.',
+            )
+            return new_filters
+        from .filters import SearchQueryFilter, SearchRankFilter, TrigramFilter
+        new_filters = OrderedDict([
+            *new_filters.items(),
+            *cls.create_special_filters(base_filters, SearchQueryFilter).items(),
+            *cls.create_special_filters(base_filters, SearchRankFilter).items(),
+        ])
+        if not settings.HAS_TRIGRAM_EXTENSION:
+            warnings.warn(
+                'Trigram search is not available because the `pg_trgm` extension is not installed.',
+            )
+            return new_filters
+        for field_name in full_text_search_fields:
+            new_filters = OrderedDict([
+                *new_filters.items(),
+                *cls.create_special_filters(base_filters, TrigramFilter, field_name).items(),
+            ])
+        return new_filters
+
+    @classmethod
+    def create_special_filters(
+        cls,
+        base_filters: OrderedDict,
+        filter_class: Union[Type[Filter], Any],
+        field_name: Optional[str] = None,
+    ) -> OrderedDict:
+        """Create special filters using a filter class and a field name."""
+        new_filters = OrderedDict()
+        for lookup_expr in filter_class.available_lookups:
+            if field_name:
+                postfix_field_name = f'{field_name}{LOOKUP_SEP}{filter_class.postfix}'
+            else:
+                postfix_field_name = filter_class.postfix
+            filter_name = cls.get_filter_name(postfix_field_name, lookup_expr)
+            if filter_name not in base_filters:
+                new_filters[filter_name] = filter_class(
+                    field_name=postfix_field_name,
+                    lookup_expr=lookup_expr,
+                )
+        return new_filters
+
+    @classmethod
+    def get_fields(cls) -> OrderedDict:
+        """Resolve the `Meta.fields` argument including only regular lookups."""
+        return cls._get_fields(is_regular_lookup_expr)
+
+    @classmethod
+    def get_full_text_search_fields(cls) -> OrderedDict:
+        """Resolve the `Meta.fields` argument including only full text search lookups."""
+        return cls._get_fields(is_full_text_search_lookup_expr)
+
+    @classmethod
+    def _get_fields(cls, predicate: Callable[[str], bool]) -> OrderedDict:
+        """Resolve the `Meta.fields` argument including lookups that match the predicate."""
+        fields: List[Tuple[str, List[str]]] = []
+        for k, v in super().get_fields().items():
+            regular_field = [lookup_expr for lookup_expr in v if predicate(lookup_expr)]
+            if len(regular_field):
+                fields.append((k, regular_field))
+        return OrderedDict(fields)

@@ -9,12 +9,12 @@ from typing import Any, Dict, Iterable, Optional, Type
 import graphene
 from django.core.exceptions import ValidationError
 from django.db import models
-from django_filters import FilterSet
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
-from .filterset import AdvancedFilterSet, tree_input_type_to_data
+from .filterset import AdvancedFilterSet
 from .filterset_factories import get_filterset_class
+from .input_data_factories import tree_input_type_to_data
 from .input_type_factories import get_filtering_args_from_filterset
 
 
@@ -74,14 +74,19 @@ class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
         info: graphene.ResolveInfo,
         args: Dict[str, Any],
         filtering_args: Dict[str, graphene.InputField],
-        filterset_class: Type[FilterSet],
+        filterset_class: Type[AdvancedFilterSet],
     ) -> models.QuerySet:
         """Return a filtered QuerySet."""
         qs = super(DjangoFilterConnectionField, cls).resolve_queryset(
             connection, iterable, info, args,
         )
         filterset = filterset_class(
-            data=tree_input_type_to_data(args['filter']), queryset=qs, request=info.context,
+            data=tree_input_type_to_data(
+                filterset_class,
+                args['filter'],
+            ),
+            queryset=qs,
+            request=info.context,
         )
         if filterset.form.is_valid():
             return filterset.qs

@@ -15,11 +15,14 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Python
+        uses: actions/setup-python@v2
         with:
-          python-version: 3.6
-      - uses: Gr1N/setup-poetry@v7
+          python-version: 3.7
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v7
       - name: Install dependencies
         run: poetry install
       - name: Run linter
@@ -30,22 +33,48 @@ jobs:
     needs: [lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Python
+        uses: actions/setup-python@v2
         with:
-          python-version: 3.6
-      - uses: Gr1N/setup-poetry@v7
+          python-version: 3.7
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v7
       - name: Install dependencies
-        run: poetry install --no-dev
+        run: poetry install
       - name: Run tests
         run: poetry run python manage.py test
 
-  release:
-    name: Release
+  coverage:
+    name: Coverage
     needs: [test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v7
+      - name: Install dependencies
+        run: poetry install
+      - name: Coverage
+        run: poetry run coverage run manage.py test
+      - name: Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: poetry run coveralls
+
+  release:
+    name: Release
+    needs: [coverage]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Semantic Release

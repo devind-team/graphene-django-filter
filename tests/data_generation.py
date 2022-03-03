@@ -3,6 +3,7 @@
 from datetime import datetime
 from itertools import count
 
+from django.db import connection
 from django.utils.timezone import make_aware
 from django_seed import Seed
 from django_seed.seeder import Seeder
@@ -12,6 +13,7 @@ from .models import Task, TaskGroup, User
 
 def generate_data() -> None:
     """Generate data for testing."""
+    reset_sequences()
     seeder: Seeder = Seed.seeder()
     generate_users(seeder)
     generate_tasks(seeder)
@@ -20,20 +22,37 @@ def generate_data() -> None:
     set_task_groups_tasks()
 
 
+def reset_sequences() -> None:
+    """Reset database sequences."""
+    with connection.cursor() as cursor:
+        for model in (User, Task, TaskGroup):
+            cursor.execute(f'ALTER SEQUENCE {model._meta.db_table}_id_seq RESTART WITH 1;')
+
+
 def generate_users(seeder: Seeder) -> None:
     """Generate user data for testing."""
     number_generator = iter(count(1))
     seeder.add_entity(
         User, 5, {
             'birthday': datetime.strptime('01/01/2000', '%m/%d/%Y'),
+            'first_name': 'Bob',
+            'last_name': 'Smith',
             'is_active': False,
         },
     )
-    seeder.add_entity(User, 10, {'is_active': False})
+    seeder.add_entity(
+        User, 10, {
+            'email': lambda ie: f'alice{next(number_generator)}@domain.com',
+            'first_name': 'Alice',
+            'last_name': 'Stone',
+            'is_active': False,
+        },
+    )
     seeder.add_entity(
         User, 15, {
-            'email': lambda ie: f'kate{next(number_generator)}@domain.com',
-            'first_name': 'Kate',
+            'email': lambda ie: f'alice{next(number_generator)}@domain.com',
+            'first_name': 'Alice',
+            'last_name': 'Stone',
             'is_active': True,
         },
     )
@@ -69,7 +88,7 @@ def generate_tasks(seeder: Seeder) -> None:
     seeder.add_entity(
         Task, 15, {
             'user_id': 2,
-            'description': 'This task in very important',
+            'description': 'This task is very important',
             'created_at': make_aware(datetime.strptime('01/01/2020', '%m/%d/%Y')),
             'completed_at': make_aware(datetime.strptime('02/01/2020', '%m/%d/%Y')),
         },
