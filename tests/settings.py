@@ -12,7 +12,7 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'NAME': os.getenv('DB_NAME', 'graphene_django_filter'),
         'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '1234'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
     },
 }
 
