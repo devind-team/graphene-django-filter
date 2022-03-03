@@ -9,6 +9,14 @@ library and therefore provides the flat API without the ability to use logical o
 of the `DjangoFilterConnectionField` field and the `FilterSet` class.
 Also, the library provides some other convenient filtering features.
 
+# Installation
+```shell
+# pip
+pip install graphene-django-filter
+# poetry
+poetry add graphene-django-filter
+```
+
 # Requirements
 * Python (3.7, 3.8, 3.9, 3.10)
 * Graphene-Django (2.15)

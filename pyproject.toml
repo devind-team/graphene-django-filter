@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "graphene-django-filter"
-version = "0.4.1"
+version = "0.5.1"
 description = "Advanced filters for Graphene"
 authors = ["devind-team <team@devind.ru>"]
 license = "MIT"
@@ -17,7 +17,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.7"
-Django = "3.2"
+Django = "^3"
 graphene = "2.1.9"
 graphene-django = "^2.15.0"
 django-filter = "^21.1"
