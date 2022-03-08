@@ -12,15 +12,77 @@ from .data_generation import generate_data
 from .schema import schema
 
 
-def get_ids(execution_result: ExecutionResult, key: str) -> List[int]:
-    """Return identifiers from an execution result using a key."""
-    return sorted(
-        int(from_global_id(edge['node']['id'])[1]) for edge
-        in execution_result.data[key]['edges']
-    )
+class QueriesExecutionTests(TestCase):
+    """Queries execution tests."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up `QueriesExecutionTests` class."""
+        super().setUpClass()
+        generate_data()
+
+    def assert_query_execution(self, expected: List[int], query: str, key: str) -> None:
+        """Fail if a query execution returns the invalid entries."""
+        execution_result = schema.execute(query)
+        self.assertEqual(expected, self.get_ids(execution_result, key))
+
+    @staticmethod
+    def get_ids(execution_result: ExecutionResult, key: str) -> List[int]:
+        """Return identifiers from an execution result using a key."""
+        return sorted(
+            int(from_global_id(edge['node']['id'])[1]) for edge
+            in execution_result.data[key]['edges']
+        )
 
 
-class LogicalExpressionsTests(TestCase):
+class EdgeCaseTests(QueriesExecutionTests):
+    """Tests for executing queries in edge cases."""
+
+    without_filter_query = """
+        {
+            %s {
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+    """
+    without_filter_fields_query = without_filter_query % 'usersFields'
+    without_filter_filterset_query = without_filter_query % 'usersFilterset'
+    with_empty_filter_query = """
+        {
+            %s(filter: {}) {
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+    """
+    with_empty_filter_fields_query = with_empty_filter_query % 'usersFields'
+    with_empty_filter_filterset_query = with_empty_filter_query % 'usersFilterset'
+
+    def test_without_filter(self) -> None:
+        """Test the schema execution without a filter."""
+        expected = list(range(1, 76))
+        self.assert_query_execution(expected, self.without_filter_fields_query, 'usersFields')
+        self.assert_query_execution(expected, self.without_filter_filterset_query, 'usersFilterset')
+
+    def test_with_empty_filter(self) -> None:
+        """Test the schema execution with an empty filter."""
+        expected = list(range(1, 76))
+        self.assert_query_execution(expected, self.with_empty_filter_fields_query, 'usersFields')
+        self.assert_query_execution(
+            expected,
+            self.with_empty_filter_filterset_query,
+            'usersFilterset',
+        )
+
+
+class LogicalExpressionsTests(QueriesExecutionTests):
     """Tests for executing queries with logical expressions."""
 
     users_query = """
@@ -100,38 +162,30 @@ class LogicalExpressionsTests(TestCase):
     task_groups_fields_query = task_groups_query % 'taskGroupsFields'
     task_groups_filterset_query = task_groups_query % 'taskGroupsFilterset'
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """Set up `LogicalExpressionsTests` class."""
-        super().setUpClass()
-        generate_data()
-
     def test_users_execution(self) -> None:
         """Test the schema execution by querying users."""
         expected = list(range(16, 51))
-        execution_result = schema.execute(self.users_fields_query)
-        self.assertEqual(expected, get_ids(execution_result, 'usersFields'))
-        execution_result = schema.execute(self.users_filterset_query)
-        self.assertEqual(expected, get_ids(execution_result, 'usersFilterset'))
+        self.assert_query_execution(expected, self.users_fields_query, 'usersFields')
+        self.assert_query_execution(expected, self.users_filterset_query, 'usersFilterset')
 
     def test_tasks_execution(self) -> None:
         """Test the schema execution by querying tasks."""
         expected = list(range(16, 76))
-        execution_result = schema.execute(self.tasks_fields_query)
-        self.assertEqual(expected, get_ids(execution_result, 'tasksFields'))
-        execution_result = schema.execute(self.tasks_filterset_query)
-        self.assertEqual(expected, get_ids(execution_result, 'tasksFilterset'))
+        self.assert_query_execution(expected, self.tasks_fields_query, 'tasksFields')
+        self.assert_query_execution(expected, self.tasks_filterset_query, 'tasksFilterset')
 
     def test_task_groups_execution(self) -> None:
         """Test the schema execution by querying task groups."""
         expected = [1, 5, 6, 8, 10]
-        execution_result = schema.execute(self.task_groups_fields_query)
-        self.assertEqual(expected, get_ids(execution_result, 'taskGroupsFields'))
-        execution_result = schema.execute(self.task_groups_filterset_query)
-        self.assertEqual(expected, get_ids(execution_result, 'taskGroupsFilterset'))
+        self.assert_query_execution(expected, self.task_groups_fields_query, 'taskGroupsFields')
+        self.assert_query_execution(
+            expected,
+            self.task_groups_filterset_query,
+            'taskGroupsFilterset',
+        )
 
 
-class FullTextSearchTests(TestCase):
+class FullTextSearchTests(QueriesExecutionTests):
     """Tests for executing queries with full text search."""
 
     search_query_query = """
@@ -217,32 +271,20 @@ class FullTextSearchTests(TestCase):
     trigram_fields_query = trigram_query % 'usersFields'
     trigram_filterset_query = trigram_query % 'usersFilterset'
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """Set up `FullTextSearchTests` class."""
-        super().setUpClass()
-        generate_data()
-
     def test_search_query_execution(self) -> None:
         """Test the schema execution by a search query."""
         expected = list(range(1, 31))
-        execution_result = schema.execute(self.search_query_fields_query)
-        self.assertEqual(expected, get_ids(execution_result, 'usersFields'))
-        execution_result = schema.execute(self.search_query_filterset_query)
-        self.assertEqual(expected, get_ids(execution_result, 'usersFilterset'))
+        self.assert_query_execution(expected, self.search_query_fields_query, 'usersFields')
+        self.assert_query_execution(expected, self.search_query_filterset_query, 'usersFilterset')
 
     def test_search_rank_execution(self) -> None:
         """Test the schema execution by a search rank."""
         expected = list(range(31, 76))
-        execution_result = schema.execute(self.search_rank_fields_query)
-        self.assertEqual(expected, get_ids(execution_result, 'tasksFields'))
-        execution_result = schema.execute(self.search_rank_filterset_query)
-        self.assertEqual(expected, get_ids(execution_result, 'tasksFilterset'))
+        self.assert_query_execution(expected, self.search_rank_fields_query, 'tasksFields')
+        self.assert_query_execution(expected, self.search_rank_filterset_query, 'tasksFilterset')
 
     def test_trigram_execution(self) -> None:
         """Test the schema execution by a trigram."""
         expected = list(range(31, 76))
-        execution_result = schema.execute(self.trigram_fields_query)
-        self.assertEqual(expected, get_ids(execution_result, 'usersFields'))
-        execution_result = schema.execute(self.trigram_filterset_query)
-        self.assertEqual(expected, get_ids(execution_result, 'usersFilterset'))
+        self.assert_query_execution(expected, self.trigram_fields_query, 'usersFields')
+        self.assert_query_execution(expected, self.trigram_filterset_query, 'usersFilterset')

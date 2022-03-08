@@ -1,10 +1,16 @@
 """Django settings for graphene-django-filter project."""
 
 import os
+from os.path import join
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path='.env')
+BASE_DIR = Path(__file__).resolve(strict=True).parent
+
+ENV_PATH = join(BASE_DIR, '.env')
+
+load_dotenv(dotenv_path=ENV_PATH)
 
 DATABASES = {
     'default': {
