@@ -12,6 +12,7 @@ from django.db import models
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
+from .conf import settings
 from .filterset import AdvancedFilterSet
 from .filterset_factories import get_filterset_class
 from .input_data_factories import tree_input_type_to_data
@@ -80,11 +81,9 @@ class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
         qs = super(DjangoFilterConnectionField, cls).resolve_queryset(
             connection, iterable, info, args,
         )
+        filter_arg = args.get(settings.FILTER_KEY, {})
         filterset = filterset_class(
-            data=tree_input_type_to_data(
-                filterset_class,
-                args['filter'],
-            ),
+            data=tree_input_type_to_data(filterset_class, filter_arg),
             queryset=qs,
             request=info.context,
         )

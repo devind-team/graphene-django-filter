@@ -20,6 +20,59 @@ def get_ids(execution_result: ExecutionResult, key: str) -> List[int]:
     )
 
 
+class EdgeCaseTests(TestCase):
+    """Tests for executing queries in edge cases."""
+
+    without_filter_query = """
+        {
+            %s {
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+    """
+    without_filter_fields_query = without_filter_query % 'usersFields'
+    without_filter_filterset_query = without_filter_query % 'usersFilterset'
+    with_empty_filter_query = """
+        {
+            %s(filter: {}) {
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+    """
+    with_empty_filter_fields_query = with_empty_filter_query % 'usersFields'
+    with_empty_filter_filterset_query = with_empty_filter_query % 'usersFilterset'
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Set up `EdgeCaseTests` class."""
+        super().setUpClass()
+        generate_data()
+
+    def test_without_filter(self) -> None:
+        """Test the schema execution without a filter."""
+        expected = list(range(1, 76))
+        execution_result = schema.execute(self.without_filter_fields_query)
+        self.assertEqual(expected, get_ids(execution_result, 'usersFields'))
+        execution_result = schema.execute(self.without_filter_filterset_query)
+        self.assertEqual(expected, get_ids(execution_result, 'usersFilterset'))
+
+    def test_with_empty_filter(self) -> None:
+        """Test the schema execution with an empty filter."""
+        expected = list(range(1, 76))
+        execution_result = schema.execute(self.with_empty_filter_fields_query)
+        self.assertEqual(expected, get_ids(execution_result, 'usersFields'))
+        execution_result = schema.execute(self.with_empty_filter_filterset_query)
+        self.assertEqual(expected, get_ids(execution_result, 'usersFilterset'))
+
+
 class LogicalExpressionsTests(TestCase):
     """Tests for executing queries with logical expressions."""
 
