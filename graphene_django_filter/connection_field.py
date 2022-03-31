@@ -4,7 +4,7 @@ Use the `AdvancedDjangoFilterConnectionField` class from this
 module instead of the `DjangoFilterConnectionField` from graphene-django.
 """
 
-from typing import Any, Dict, Iterable, Optional, Type
+from typing import Any, Callable, Dict, Iterable, Optional, Type, Union
 
 import graphene
 from django.core.exceptions import ValidationError
@@ -24,7 +24,7 @@ class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
 
     def __init__(
         self,
-        type: Type[DjangoObjectType],
+        type: Union[Type[DjangoObjectType], Callable[[], Type[DjangoObjectType]], str],
         fields: Optional[Dict[str, list]] = None,
         order_by: Any = None,
         extra_filter_meta: Optional[dict] = None,

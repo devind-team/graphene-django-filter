@@ -6,7 +6,7 @@ per-file-ignores =
     test_filterset.py:N802
     filters.py:A003
     0001_initial.py:D100,D101,D104
-ignore = ANN002,ANN003,ANN101,ANN102,D106,D107
+ignore = ANN002,ANN003,ANN401,ANN101,ANN102,D106,D107
 
 import-order-style = pycharm
 dictionaries=en_US,python,technical,django
