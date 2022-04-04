@@ -41,7 +41,7 @@ class FilterArgumentsFactory:
         ),
     }
 
-    input_object_types: dict[str, Type[graphene.InputObjectType]] = {}
+    input_object_types: Dict[str, Type[graphene.InputObjectType]] = {}
 
     def __init__(self, filterset_class: Type[AdvancedFilterSet], input_type_prefix: str) -> None:
         self.filterset_class = filterset_class
