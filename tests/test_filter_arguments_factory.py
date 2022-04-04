@@ -1,18 +1,12 @@
-"""Input type factories tests."""
+"""Tests for converting a AdvancedFilterSet class to filter arguments."""
+
+from unittest.mock import patch
 
 import graphene
 from anytree import Node
 from anytree.exporter import DictExporter
 from django.test import TestCase
-from graphene_django_filter.input_type_factories import (
-    create_filter_input_subfield,
-    create_filter_input_type,
-    create_input_object_type,
-    filterset_to_trees,
-    get_filtering_args_from_filterset,
-    sequence_to_tree,
-    try_add_sequence,
-)
+from graphene_django_filter.filter_arguments_factory import FilterArgumentsFactory
 from graphene_django_filter.input_types import (
     SearchQueryFilterInputType,
     SearchRankFilterInputType,
@@ -21,11 +15,10 @@ from graphene_django_filter.input_types import (
 from stringcase import pascalcase
 
 from .filtersets import TaskFilter
-from .object_types import TaskFilterSetClassType
 
 
-class InputTypeFactoriesTests(TestCase):
-    """Input type factories tests."""
+class FilterArgumentsFactoryTests(TestCase):
+    """The `FilterArgumentsFactory` class tests."""
 
     abstract_tree_root = Node(
         'field1', children=(
@@ -92,18 +85,20 @@ class InputTypeFactoriesTests(TestCase):
     ]
 
     def test_sequence_to_tree(self) -> None:
-        """Test the `sequence_to_tree` function."""
+        """Test the `sequence_to_tree` method."""
         self.assertEqual(
             {
                 'name': 'field1',
                 'children': [{'name': 'field2'}],
             },
-            DictExporter().export(sequence_to_tree(('field1', 'field2'))),
+            DictExporter().export(FilterArgumentsFactory.sequence_to_tree(('field1', 'field2'))),
         )
 
     def test_possible_try_add_sequence(self) -> None:
-        """Test the `try_add_sequence` function when adding a sequence is possible."""
-        is_mutated = try_add_sequence(self.abstract_tree_root, ('field1', 'field5', 'field6'))
+        """Test the `try_add_sequence` method when adding a sequence is possible."""
+        is_mutated = FilterArgumentsFactory.try_add_sequence(
+            self.abstract_tree_root, ('field1', 'field5', 'field6'),
+        )
         self.assertTrue(is_mutated)
         self.assertEqual(
             {
@@ -128,13 +123,22 @@ class InputTypeFactoriesTests(TestCase):
         )
 
     def test_impossible_try_add_sequence(self) -> None:
-        """Test the `try_add_sequence` function when adding a sequence is impossible."""
-        is_mutated = try_add_sequence(self.abstract_tree_root, ('field5', 'field6'))
+        """Test the `try_add_sequence` method when adding a sequence is impossible."""
+        is_mutated = FilterArgumentsFactory.try_add_sequence(
+            self.abstract_tree_root, ('field5', 'field6'),
+        )
         self.assertFalse(is_mutated)
 
+    def test_init(self) -> None:
+        """The the `__init__` method."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        self.assertEqual(TaskFilter, filter_arguments_factory.filterset_class)
+        self.assertEqual('Task', filter_arguments_factory.input_type_prefix)
+        self.assertEqual('TaskFilterInputType', filter_arguments_factory.filter_input_type_name)
+
     def test_filterset_to_trees(self) -> None:
-        """Test the `filterset_to_trees` function."""
-        roots = filterset_to_trees(TaskFilter)
+        """Test the `filterset_to_trees` method."""
+        roots = FilterArgumentsFactory.filterset_to_trees(TaskFilter)
         exporter = DictExporter()
         self.assertEqual(
             [exporter.export(root) for root in self.task_filter_trees_roots],
@@ -142,8 +146,8 @@ class InputTypeFactoriesTests(TestCase):
         )
 
     def test_create_input_object_type(self) -> None:
-        """Test the `create_input_object_type` function."""
-        input_object_type = create_input_object_type(
+        """Test the `create_input_object_type` method."""
+        input_object_type = FilterArgumentsFactory.create_input_object_type(
             'CustomInputObjectType',
             {'field': graphene.String()},
         )
@@ -151,11 +155,25 @@ class InputTypeFactoriesTests(TestCase):
         self.assertTrue(issubclass(input_object_type, graphene.InputObjectType))
         self.assertTrue(hasattr(input_object_type, 'field'))
 
+    @patch(
+        'graphene_django_filter.filter_arguments_factory.FilterArgumentsFactory.input_object_types',
+        new={},
+    )
+    def test_create_input_object_type_cache(self) -> None:
+        """Test the `create_input_object_type` method's cache usage."""
+        self.assertEqual({}, FilterArgumentsFactory.input_object_types)
+        key = 'CustomInputObjectType'
+        input_object_type = FilterArgumentsFactory.create_input_object_type(key, {})
+        self.assertTrue(
+            input_object_type == FilterArgumentsFactory.create_input_object_type(key, {}),
+        )
+        self.assertEqual({key: input_object_type}, FilterArgumentsFactory.input_object_types)
+
     def test_create_filter_input_subfield_without_special(self) -> None:
-        """Test the `create_filter_input_subfield` function without any special filters."""
-        input_field = create_filter_input_subfield(
+        """Test the `create_filter_input_subfield` method without any special filters."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        input_field = filter_arguments_factory.create_filter_input_subfield(
             self.task_filter_trees_roots[4],
-            TaskFilter,
             'Task',
             'User field',
         )
@@ -171,30 +189,30 @@ class InputTypeFactoriesTests(TestCase):
             self.assertEqual(f'`{pascalcase(attr)}` lookup', getattr(email_type, attr).description)
 
     def test_create_filter_input_subfield_with_search_query(self) -> None:
-        """Test the `create_filter_input_subfield` function with the search query filter."""
-        search_query_type = create_filter_input_subfield(
+        """Test the `create_filter_input_subfield` method with the search query filter."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        search_query_type = filter_arguments_factory.create_filter_input_subfield(
             self.task_filter_trees_roots[5],
-            TaskFilter,
             'Task',
             'SearchQuery',
         ).type
         self.assertEqual(search_query_type, SearchQueryFilterInputType)
 
     def test_create_filter_input_subtype_with_search_rank(self) -> None:
-        """Test the `create_filter_input_subtype` function with the search rank filter."""
-        search_rank_type = create_filter_input_subfield(
+        """Test the `create_filter_input_subtype` method with the search rank filter."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        search_rank_type = filter_arguments_factory.create_filter_input_subfield(
             self.task_filter_trees_roots[6],
-            TaskFilter,
             'Task',
             'SearchRank',
         ).type
         self.assertEqual(search_rank_type, SearchRankFilterInputType)
 
     def test_create_filter_input_subtype_with_trigram(self) -> None:
-        """Test the `create_filter_input_subtype` function with the trigram filter."""
-        input_object_type = create_filter_input_subfield(
+        """Test the `create_filter_input_subtype` method with the trigram filter."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        input_object_type = filter_arguments_factory.create_filter_input_subfield(
             self.task_filter_trees_roots[0],
-            TaskFilter,
             'Task',
             'Name field',
         ).type
@@ -202,11 +220,10 @@ class InputTypeFactoriesTests(TestCase):
         self.assertEqual(trigram_type, TrigramFilterInputType)
 
     def test_create_filter_input_type(self) -> None:
-        """Test the `create_filter_input_type` function."""
-        input_object_type = create_filter_input_type(
+        """Test the `create_filter_input_type` method."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        input_object_type = filter_arguments_factory.create_filter_input_type(
             self.task_filter_trees_roots,
-            TaskFilter,
-            'Task',
         )
         self.assertEqual('TaskFilterInputType', input_object_type.__name__)
         for attr in ('name', 'description', 'user', 'created_at', 'completed_at'):
@@ -223,11 +240,9 @@ class InputTypeFactoriesTests(TestCase):
         self.assertEqual('`Not` field', not_input_type.description)
         self.assertEqual(input_object_type, not_input_type.type)
 
-    def test_get_filtering_args_from_filterset(self) -> None:
-        """Test the `get_filtering_args_from_filterset` function."""
-        filtering_args = get_filtering_args_from_filterset(TaskFilter, TaskFilterSetClassType)
-        self.assertEqual(('filter',), tuple(filtering_args.keys()))
-        self.assertEqual(
-            'TaskFilterSetClassFilterInputType',
-            filtering_args['filter'].type.__name__,
-        )
+    def test_arguments(self) -> None:
+        """Test the `arguments` property."""
+        filter_arguments_factory = FilterArgumentsFactory(TaskFilter, 'Task')
+        arguments = filter_arguments_factory.arguments
+        self.assertEqual(('filter',), tuple(arguments.keys()))
+        self.assertEqual('TaskFilterInputType', arguments['filter'].type.__name__)

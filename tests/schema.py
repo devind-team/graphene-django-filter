@@ -22,6 +22,7 @@ class Query(graphene.ObjectType):
     )
     users_filterset = AdvancedDjangoFilterConnectionField(
         UserFilterSetClassType,
+        filter_input_type_prefix='UserFilterSetClass',
         description='Advanced filter fields with the `UserFilterSetClassType` type',
     )
     tasks_fields = AdvancedDjangoFilterConnectionField(
@@ -30,6 +31,7 @@ class Query(graphene.ObjectType):
     )
     tasks_filterset = AdvancedDjangoFilterConnectionField(
         TaskFilterSetClassType,
+        filter_input_type_prefix='TaskFilterSetClass',
         description='Advanced filter field with the `TaskFilterSetClassType` type',
     )
     task_groups_fields = AdvancedDjangoFilterConnectionField(
@@ -38,6 +40,7 @@ class Query(graphene.ObjectType):
     )
     task_groups_filterset = AdvancedDjangoFilterConnectionField(
         TaskGroupFilterSetClassType,
+        filter_input_type_prefix='TaskGroupFilterSetClass',
         description='Advanced filter field with the `TaskGroupFilterSetClassType` type',
     )
 
