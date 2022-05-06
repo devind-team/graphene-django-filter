@@ -40,7 +40,7 @@ flake8-annotations = "^2.9.0"
 pep8-naming = "^0.12.1"
 django-seed = "^0.3.1"
 python-dotenv = "^0.20.0"
-pre-commit = "^2.18.1"
+pre-commit = "^2.19.0"
 coveralls = "^3.3.1"
 
 [build-system]
