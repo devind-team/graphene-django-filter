@@ -121,7 +121,7 @@ python-versions = "*"
 
 [[package]]
 name = "django"
-version = "3.2.13"
+version = "3.2.15"
 description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
 category = "main"
 optional = false
@@ -848,8 +848,8 @@ distlib = [
     {file = "distlib-0.3.4.zip", hash = "sha256:e4b58818180336dc9c529bfb9a0b58728ffc09ad92027a3f30b7cd91e3458579"},
 ]
 django = [
-    {file = "Django-3.2.13-py3-none-any.whl", hash = "sha256:b896ca61edc079eb6bbaa15cf6071eb69d6aac08cce5211583cfb41515644fdf"},
-    {file = "Django-3.2.13.tar.gz", hash = "sha256:6d93497a0a9bf6ba0e0b1a29cccdc40efbfc76297255b1309b3a884a688ec4b6"},
+    {file = "Django-3.2.15-py3-none-any.whl", hash = "sha256:115baf5049d5cf4163e43492cdc7139c306ed6d451e7d3571fe9612903903713"},
+    {file = "Django-3.2.15.tar.gz", hash = "sha256:f71934b1a822f14a86c9ac9634053689279cd04ae69cb6ade4a59471b886582b"},
 ]
 django-filter = [
     {file = "django-filter-21.1.tar.gz", hash = "sha256:632a251fa8f1aadb4b8cceff932bb52fe2f826dd7dfe7f3eac40e5c463d6836e"},
