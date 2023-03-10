@@ -17,7 +17,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
-Django = "^3"
+Django = ">=3.2.12,<5.0.0"
 graphene = "2.1.9"
 graphene-django = "^2.15.0"
 django-filter = "^21.1"
