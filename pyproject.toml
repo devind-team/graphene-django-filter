@@ -17,9 +17,9 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
-Django = "^3"
-graphene = "2.1.9"
-graphene-django = "^2.15.0"
+Django = ">=3.2.12,<5.0.0"
+graphene = ">=2.1.9"
+graphene-django = ">=2.15.0"
 django-filter = "^21.1"
 psycopg2-binary = "^2.9.3"
 stringcase = "^1.2.0"
