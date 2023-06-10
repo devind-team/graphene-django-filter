@@ -306,19 +306,19 @@ files = [
 
 [[package]]
 name = "django"
-version = "4.1.9"
+version = "4.2.2"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Django-4.1.9-py3-none-any.whl", hash = "sha256:adae3a952fd86800094ae6f64aa558572e8b4ba8dfe21f0ed8175147e75a72a1"},
-    {file = "Django-4.1.9.tar.gz", hash = "sha256:e9f074a84930662104871bfcea55c3c180c50a0a47739db82435deae6cbaf032"},
+    {file = "Django-4.2.2-py3-none-any.whl", hash = "sha256:672b3fa81e1f853bb58be1b51754108ab4ffa12a77c06db86aa8df9ed0c46fe5"},
+    {file = "Django-4.2.2.tar.gz", hash = "sha256:2a6b6fbff5b59dd07bef10bcb019bee2ea97a30b2a656d51346596724324badf"},
 ]
 
 [package.dependencies]
-asgiref = ">=3.5.2,<4"
+asgiref = ">=3.6.0,<4"
 "backports.zoneinfo" = {version = "*", markers = "python_version < \"3.9\""}
-sqlparse = ">=0.2.2"
+sqlparse = ">=0.3.1"
 tzdata = {version = "*", markers = "sys_platform == \"win32\""}
 
 [package.extras]
@@ -1195,4 +1195,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4.0"
-content-hash = "1983772c0a219929dd4f23004175ec23e1a6ad60f722349b6670bb81f3f38e4a"
+content-hash = "a5f5c61e73d1ebb3943c0951fc54849fcdcb213c70f87cf9e0f37094d2b9f33c"
