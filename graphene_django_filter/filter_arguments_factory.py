@@ -189,7 +189,7 @@ class FilterArgumentsFactory:
         trees: List[Node] = []
         for filter_value in filterset_class.base_filters.values():
             values = (*filter_value.field_name.split(LOOKUP_SEP), filter_value.lookup_expr)
-            if len(trees) == 0 or not any([cls.try_add_sequence(tree, values) for tree in trees]):
+            if len(trees) == 0 or not any(cls.try_add_sequence(tree, values) for tree in trees):
                 trees.append(cls.sequence_to_tree(values))
         return trees
 
