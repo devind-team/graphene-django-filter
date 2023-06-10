@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "graphene-django-filter"
-version = "0.6.4"
+version = "0.6.5"
 description = "Advanced filters for Graphene"
 authors = ["devind-team <team@devind.ru>"]
 license = "MIT"
@@ -16,10 +16,10 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<4.0"
-Django = "^3"
-graphene = "2.1.9"
-graphene-django = "^2.15.0"
+python = ">=3.8,<4.0"
+Django = ">=3,<4.3"
+graphene = ">=2.1.9,<4"
+graphene-django = "^3.0.0"
 django-filter = "^21.1"
 psycopg2-binary = "^2.9.3"
 stringcase = "^1.2.0"
