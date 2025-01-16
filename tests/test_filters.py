@@ -49,7 +49,7 @@ class FiltersTests(TestCase):
             ),
         ).all()
         self.assertEqual(1, annotated_filter.filter_counter)
-        self.assertEqual([5], list(map(lambda user: user.id, users)))
+        self.assertEqual([5], [user.id for user in users])
 
     def test_search_query_filter(self) -> None:
         """Test the `SearchQueryFilter` class."""
