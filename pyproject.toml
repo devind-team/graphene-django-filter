@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "graphene-django-filter"
-version = "0.6.5"
+version = "0.6.4"
 description = "Advanced filters for Graphene"
-authors = ["Lablup Inc. <devops@lablup.com>"]
+authors = ["devind-team <team@devind.ru>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/lablup/graphene-django-filter"
-repository = "https://github.com/lablup/graphene-django-filter"
+homepage = "https://github.com/devind-team/graphene-django-filter"
+repository = "https://github.com/devind-team/graphene-django-filter"
 keywords = ["django", "graphene", "filter"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -17,10 +17,10 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
-Django = ">=3.2.12,<5.2.0"
-graphene = ">=2.1.9"
-graphene-django = ">=2.15.0"
-django-filter = ">=21.1"
+Django = "^3"
+graphene = "2.1.9"
+graphene-django = "^2.15.0"
+django-filter = "^21.1"
 psycopg2-binary = "^2.9.3"
 stringcase = "^1.2.0"
 anytree = "^2.8.0"
