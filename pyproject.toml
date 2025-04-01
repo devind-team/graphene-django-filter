@@ -17,11 +17,11 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
-Django = ">=3,<4.3"
+Django = ">=3.2,<6"
 graphene = ">=2.1.9,<4"
 graphene-django = "^3.0.0"
-django-filter = "^21.1"
-psycopg2-binary = "^2.9.3"
+django-filter = ">=21.1"
+psycopg2-binary = ">=2.9.3,!=2.9.6"
 stringcase = "^1.2.0"
 anytree = "^2.8.0"
 wrapt = "^1.14.0"
@@ -41,7 +41,7 @@ pep8-naming = "^0.12.1"
 django-seed = "^0.3.1"
 python-dotenv = "^0.20.0"
 pre-commit = "^2.19.0"
-coveralls = "^3.3.1"
+coveralls = ">=3.3.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
