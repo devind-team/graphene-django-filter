@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "graphene-django-filter"
-version = "0.6.5"
+version = "0.6.6"
 description = "Advanced filters for Graphene"
 authors = ["devind-team <team@devind.ru>"]
 license = "MIT"
