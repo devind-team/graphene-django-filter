@@ -99,6 +99,7 @@ jobs:
     needs: [coverage]
     runs-on: ubuntu-latest
     permissions:
+      contents: write
       id-token: write
     steps:
       - name: Checkout
