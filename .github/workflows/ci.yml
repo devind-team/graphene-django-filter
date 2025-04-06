@@ -89,11 +89,6 @@ jobs:
         run: poetry install
       - name: Coverage
         run: poetry run coverage run manage.py test
-      - name: Coveralls
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        run: poetry run coveralls
-
   release:
     name: Release
     needs: [coverage]
