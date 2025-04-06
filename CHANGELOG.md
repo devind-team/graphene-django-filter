@@ -2,7 +2,26 @@
 
 
 
+## v0.6.7 (2025-04-06)
+
+### Chore
+
+* chore: Remove coveralls ([`ce009bb`](https://github.com/devind-team/graphene-django-filter/commit/ce009bbddc7eb0755ebbffe9e9cc672d460c29db))
+
+### Unknown
+
+* Merge pull request #83 from lablup/fix/resolve-potential-none-filter-arg
+
+fix: resolve potential `None` value for filter argument ([`52c8486`](https://github.com/devind-team/graphene-django-filter/commit/52c848694a73c03ce1959426164527035285916b))
+
+
 ## v0.6.6 (2025-04-02)
+
+### Chore
+
+* chore(deps): Bump django-filter to &gt;=21.1 ([`898a77c`](https://github.com/devind-team/graphene-django-filter/commit/898a77c4ae1ddf3ca2fd93eedce97adb48daf422))
+
+* chore(deps): Bump dependency on django to &lt;5.2.0 ([`69b93db`](https://github.com/devind-team/graphene-django-filter/commit/69b93dbe063324cee1856f06e1c8b7a8017cf3ee))
 
 ### Fix
 
@@ -11,6 +30,8 @@
 * fix: fix ci ([`d1b366a`](https://github.com/devind-team/graphene-django-filter/commit/d1b366ac681ee5e4702ec32a6b8c1ed90220c04a))
 
 * fix: fix dependency versions ([`57de2f4`](https://github.com/devind-team/graphene-django-filter/commit/57de2f4a3d7192606d9c755ed9350f01cd0fd225))
+
+* fix: Discard redundant changes ([`623aed7`](https://github.com/devind-team/graphene-django-filter/commit/623aed7b39c00d3ab7970f4d545802d2a5ff78f1))
 
 ### Unknown
 
@@ -110,6 +131,8 @@ Signed-off-by: dependabot[bot] &lt;support@github.com&gt; ([`24ad5d8`](https://g
 
 * fix: fix project version back to original ([`ae6d34a`](https://github.com/devind-team/graphene-django-filter/commit/ae6d34a823bed0c5617c96349ecbd72f8de3a87b))
 
+* fix: Empty dict rather than `None` when filter is missing ([`d94bc5c`](https://github.com/devind-team/graphene-django-filter/commit/d94bc5c35031d5f5f07b511fcf2c0f27ec44f4f6))
+
 ### Unknown
 
 * Merge pull request #77 from devind-team/develop
@@ -135,6 +158,10 @@ Upgrade version of python, Django, graphene, graphene-django ([`78f9c6a`](https:
 * Bump up main version ([`1b4442b`](https://github.com/devind-team/graphene-django-filter/commit/1b4442bdd9669a26ce521ce09f5c7800c40f716a))
 
 * Upgrade version range for Python, Django, graphene, graphene-django ([`d51ef74`](https://github.com/devind-team/graphene-django-filter/commit/d51ef74503a12c1bdd9ac95d4e4daea48cf5b4c7))
+
+* Bump to 0.6.5 ([`5b67df9`](https://github.com/devind-team/graphene-django-filter/commit/5b67df9db7630b6d242672cf67f21af5765b6eba))
+
+* deps: Bump django&lt;=5.0.0 graphene&gt;=2.1.9 graphene-django&gt;=2.15.0 ([`b914d0d`](https://github.com/devind-team/graphene-django-filter/commit/b914d0d2301522733262e15a8127b78f6dc5ade7))
 
 * Merge pull request #42 from devind-team/dependabot/pip/pre-commit-2.19.0
 
