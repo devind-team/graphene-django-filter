@@ -110,7 +110,7 @@ class AdvancedDjangoFilterConnectionField(DjangoFilterConnectionField):
         qs = super(DjangoFilterConnectionField, cls).resolve_queryset(
             connection, iterable, info, args,
         )
-        filter_arg = args.get(settings.FILTER_KEY, {})
+        filter_arg = args.get(settings.FILTER_KEY) or {}
         filterset = filterset_class(
             data=tree_input_type_to_data(filterset_class, filter_arg),
             queryset=qs,
